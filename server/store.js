@@ -26,7 +26,6 @@ export class Store {
       data = {
         room,
         settings: { ...DEFAULT_SETTINGS },
-        stats: { moktak: 0, bell: 0, bow: 0 },
         items: SAMPLE_ITEMS.map((s) => ({
           id: newId(), room, status: 'visible', anonymous: false, ...s,
         })),
@@ -35,7 +34,6 @@ export class Store {
       this.save(room);
     }
     data.settings = { ...DEFAULT_SETTINGS, ...data.settings };
-    data.stats = { moktak: 0, bell: 0, bow: 0, ...data.stats };
     this.rooms.set(room, data);
     return data;
   }

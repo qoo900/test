@@ -25,8 +25,6 @@ class ServerApi {
   }
   getState({ admin = false } = {}) { return this.req(`/state${admin ? '?admin=1' : ''}`); }
   addItem(input) { return this.req('/items', { method: 'POST', body: JSON.stringify(input) }).then((r) => r.item); }
-  react(type) { return this.req('/react', { method: 'POST', body: JSON.stringify({ type }) }).then((r) => r.stats); }
-  presence(me) { return this.req('/presence', { method: 'POST', body: JSON.stringify(me) }); }
   async adminLogin(password) {
     this.adminPassword = password;
     try { await this.req('/admin/login', { method: 'POST' }); return true; }
@@ -39,13 +37,13 @@ class ServerApi {
 }
 
 // ── 로컬 모드 (서버 없이 정적 호스팅/데모용, 이 브라우저에만 저장) ──
-const LOCAL_ADMIN_PASSWORD = 'sansa2026'; // 로컬 데모 전용. 실제 운영은 서버 모드를 사용하세요.
+const LOCAL_ADMIN_PASSWORD = 'tree2026'; // 로컬 데모 전용. 실제 운영은 서버 모드를 사용하세요.
 
 class LocalApi {
   constructor(room) {
     this.mode = 'local';
     this.room = room;
-    this.key = `sansa-village:${room}`;
+    this.key = `wishtree:${room}`;
     this.isAdmin = false;
     this.data = this.load();
   }
@@ -57,7 +55,6 @@ class LocalApi {
     return {
       room: this.room,
       settings: { ...DEFAULT_SETTINGS },
-      stats: { moktak: 0, bell: 0, bow: 0 },
       items: SAMPLE_ITEMS.map((s) => ({ id: uid(), room: this.room, status: 'visible', anonymous: false, ...s })),
     };
   }
@@ -67,7 +64,7 @@ class LocalApi {
     const items = this.data.items
       .filter((it) => admin || it.status === 'visible')
       .map((it) => (sealed && !admin ? { ...it, message: null, sealed: true } : { ...it }));
-    return { room: this.room, settings: { ...this.data.settings }, stats: { ...this.data.stats }, sealed, items, serverTime: new Date().toISOString() };
+    return { room: this.room, settings: { ...this.data.settings }, sealed, items, serverTime: new Date().toISOString() };
   }
   async getState({ admin = false } = {}) { return this.state(admin && this.isAdmin); }
   async addItem(input) {
@@ -78,8 +75,6 @@ class LocalApi {
     this.save();
     return isSealed(this.data.settings) ? { ...item, message: null, sealed: true } : item;
   }
-  async react(type) { this.data.stats[type] = (this.data.stats[type] || 0) + 1; this.save(); return { ...this.data.stats }; }
-  async presence() { return { players: [], online: 1 }; }
   async adminLogin(pw) {
     if (pw !== LOCAL_ADMIN_PASSWORD) throw new Error('비밀번호가 올바르지 않습니다.');
     this.isAdmin = true; return true;

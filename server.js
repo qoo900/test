@@ -1,9 +1,9 @@
-// 연말 산사 빌리지 - 의존성 없는 Node.js 서버 (Node 18+)
+// 우리의 소원트리 - 의존성 없는 Node.js 서버 (Node 18+)
 //   실행: node server.js   →  http://localhost:8080
 //
 // 환경 변수
 //   PORT                  (기본 8080)
-//   ADMIN_PASSWORD        운영진 비밀번호 (기본 'sansa2026' — 운영 시 반드시 변경)
+//   ADMIN_PASSWORD        운영진 비밀번호 (기본 'tree2026' — 운영 시 반드시 변경)
 //   PUBLIC_URL            슬랙 메시지에 넣을 외부 접속 주소 (기본 http://localhost:PORT)
 //   SLACK_SIGNING_SECRET  슬래시 커맨드 서명 검증용
 //   SLACK_WEBHOOK_URL     새 장식 알림을 보낼 슬랙 Incoming Webhook
@@ -16,16 +16,16 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { Store, newId } from './server/store.js';
 import { verifySlackSignature, buildCommandResponse, buildNewItemMessage, postWebhook } from './server/slack.js';
-import { validateNewItem, isSealed, sanitizeRoom, sanitizeText, ITEM_STATUS, AVATAR_OPTIONS } from './public/js/data/catalog.js';
+import { validateNewItem, isSealed, sanitizeRoom, sanitizeText, ITEM_STATUS } from './public/js/data/catalog.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 8080);
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'sansa2026';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'tree2026';
 const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${PORT}`;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const store = new Store(process.env.DATA_DIR || path.join(__dirname, 'data'));
 
-if (!process.env.ADMIN_PASSWORD) console.warn('⚠️  ADMIN_PASSWORD 미설정 — 기본 비밀번호(sansa2026)를 사용 중입니다.');
+if (!process.env.ADMIN_PASSWORD) console.warn('⚠️  ADMIN_PASSWORD 미설정 — 기본 비밀번호(tree2026)를 사용 중입니다.');
 
 // ── 유틸 ────────────────────────────────────────────────
 const MIME = {
@@ -78,34 +78,7 @@ function publicState(data, admin) {
   const items = data.items
     .filter((it) => admin || it.status === 'visible')
     .map((it) => (sealed && !admin ? { ...it, message: null, sealed: true } : it));
-  return { room: data.room, settings: data.settings, stats: data.stats, sealed, items, serverTime: new Date().toISOString() };
-}
-
-// ── 접속자(Presence) : 메모리에만 보관 ─────────────────
-const presence = new Map(); // room -> Map(id -> player)
-function updatePresence(room, p) {
-  if (!presence.has(room)) presence.set(room, new Map());
-  const map = presence.get(room);
-  const now = Date.now();
-  if (p) map.set(p.id, { ...p, t: now });
-  for (const [id, v] of map) if (now - v.t > 10_000) map.delete(id);
-  return map;
-}
-
-function cleanPlayer(b) {
-  const num = (v, lim) => Math.max(-lim, Math.min(lim, Number(v) || 0));
-  const av = b.avatar || {};
-  return {
-    id: sanitizeText(b.id, 40),
-    name: sanitizeText(b.name, 20) || '익명',
-    avatar: {
-      body: AVATAR_OPTIONS.body.some((o) => o.id === av.body) ? av.body : 'monk',
-      hat: AVATAR_OPTIONS.hat.some((o) => o.id === av.hat) ? av.hat : 'none',
-      color: /^#[0-9a-f]{6}$/i.test(av.color) ? av.color : '#c0392b',
-    },
-    x: num(b.x, 100), z: num(b.z, 100), ry: num(b.ry, 10),
-    emote: sanitizeText(b.emote, 8), emoteAt: Number(b.emoteAt) || 0,
-  };
+  return { room: data.room, settings: data.settings, sealed, items, serverTime: new Date().toISOString() };
 }
 
 // ── API 라우팅 ──────────────────────────────────────────
@@ -147,25 +120,6 @@ async function handleApi(req, res, url) {
     return send(res, 201, { item: sealed ? { ...item, message: null, sealed: true } : item });
   }
 
-  // POST /api/rooms/:room/react  {type: 'moktak'|'bell'|'bow'}
-  if (action === 'react' && req.method === 'POST') {
-    if (!rateLimit(`react:${clientIp(req)}`, 120, 60_000)) return send(res, 429, { error: 'too many' });
-    const { type } = await readJson(req);
-    if (!['moktak', 'bell', 'bow'].includes(type)) return send(res, 400, { error: 'bad type' });
-    data.stats[type] = (data.stats[type] || 0) + 1;
-    store.save(room);
-    return send(res, 200, { stats: data.stats });
-  }
-
-  // POST /api/rooms/:room/presence  (내 위치 보고 + 다른 접속자 목록)
-  if (action === 'presence' && req.method === 'POST') {
-    const p = cleanPlayer(await readJson(req));
-    if (!p.id) return send(res, 400, { error: 'id required' });
-    const map = updatePresence(room, p);
-    const players = [...map.values()].filter((v) => v.id !== p.id);
-    return send(res, 200, { players, online: map.size });
-  }
-
   // ── 운영진 전용 ──
   if (action === 'admin') {
     if (parts[4] === 'login' && req.method === 'POST') {
@@ -179,6 +133,7 @@ async function handleApi(req, res, url) {
       if ('sealEnabled' in b) data.settings.sealEnabled = !!b.sealEnabled;
       if ('sealUntil' in b && Number.isFinite(Date.parse(b.sealUntil))) data.settings.sealUntil = new Date(b.sealUntil).toISOString();
       if ('title' in b) data.settings.title = sanitizeText(b.title, 30) || data.settings.title;
+      if ('owner' in b) data.settings.owner = sanitizeText(b.owner, 20) || data.settings.owner;
       store.save(room);
       return send(res, 200, publicState(data, true));
     }
@@ -227,6 +182,6 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => console.log(`🏯 연말 산사 빌리지: http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`🎄 우리의 소원트리: http://localhost:${PORT}`));
 
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { store.flushAll(); process.exit(0); });

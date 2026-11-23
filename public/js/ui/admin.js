@@ -8,7 +8,7 @@ export function setupAdmin({ api, onStateChange }) {
   let filter = 'all';
   const body = $('#admin-body'); const login = $('#admin-login');
   $('#admin-mode-note').textContent = api.mode === 'local'
-    ? '로컬 모드: 이 브라우저에만 적용됩니다. (데모 비밀번호: sansa2026)'
+    ? '로컬 모드: 이 브라우저에만 적용됩니다. (데모 비밀번호: tree2026)'
     : '서버의 ADMIN_PASSWORD 환경 변수로 설정된 비밀번호를 입력하세요.';
 
   const refresh = async (newState) => {
@@ -17,7 +17,7 @@ export function setupAdmin({ api, onStateChange }) {
     $('#seal-until').value = formatDateTimeLocal(state.settings.sealUntil);
     const c = { visible: 0, hidden: 0, archived: 0 };
     state.items.forEach((it) => { c[it.status] = (c[it.status] || 0) + 1; });
-    $('#admin-stats').textContent = `전체 ${state.items.length}개 · 공개 ${c.visible} · 숨김 ${c.hidden} · 보관 ${c.archived}  |  목탁 ${state.stats.moktak} · 범종 ${state.stats.bell} · 합장 ${state.stats.bow}`;
+    $('#admin-stats').textContent = `전체 ${state.items.length}개 · 공개 ${c.visible} · 숨김 ${c.hidden} · 보관 ${c.archived}`;
     renderList();
     onStateChange?.();
   };
@@ -83,7 +83,7 @@ export function setupAdmin({ api, onStateChange }) {
   $('#admin-export').addEventListener('click', () => {
     if (!state) return;
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-    const a = el('a', { href: URL.createObjectURL(blob), download: `sansa-${state.room}-${new Date().toISOString().slice(0, 10)}.json` });
+    const a = el('a', { href: URL.createObjectURL(blob), download: `wishtree-${state.room}-${new Date().toISOString().slice(0, 10)}.json` });
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   });
 

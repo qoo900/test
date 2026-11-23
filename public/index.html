@@ -3,42 +3,27 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-  <title>연말 산사 빌리지</title>
-  <meta name="description" content="눈 내리는 산사 마당과 크리스마스 트리가 어우러진 연말 3D 공간. 소원 편지와 연등을 달아 주세요." />
-  <meta name="theme-color" content="#151a3a" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏮</text></svg>" />
+  <title>우리의 소원트리</title>
+  <meta name="description" content="벽난로가 타오르는 오두막 거실의 크리스마스 트리에 롤링페이퍼를 걸어 주세요." />
+  <meta name="theme-color" content="#1a0f0b" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎄</text></svg>" />
   <link rel="stylesheet" href="./css/style.css" />
   <script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
 </head>
 <body>
   <div id="app"></div>
+  <div id="loading" class="loading"><div class="loading-icon">🎄</div><p>오두막 문을 여는 중…</p></div>
 
-  <!-- 로딩 -->
-  <div id="loading" class="loading"><div class="loading-lantern">🏮</div><p>산사로 올라가는 중…</p></div>
-
-  <!-- 입장 & 캐릭터 커스터마이징 -->
+  <!-- 입장 -->
   <section id="entry" class="entry" hidden>
     <div class="entry-card">
-      <header class="entry-head">
-        <p class="eyebrow" id="entry-room">MAIN 마을</p>
-        <h1>연말 산사 빌리지</h1>
-        <p class="sub">눈 내리는 산사 마당에 한 해의 소원을 걸어 주세요</p>
-      </header>
-      <div class="entry-body">
-        <div class="preview-wrap"><canvas id="preview"></canvas><p class="preview-hint">드래그해서 돌려 보세요</p></div>
-        <div class="entry-form">
-          <label class="field-label">캐릭터</label>
-          <div class="chips" id="opt-body" role="radiogroup" aria-label="캐릭터"></div>
-          <label class="field-label">색상</label>
-          <div class="swatches" id="opt-color" role="radiogroup" aria-label="색상"></div>
-          <label class="field-label">모자</label>
-          <div class="chips" id="opt-hat" role="radiogroup" aria-label="모자"></div>
-          <label class="field-label" for="entry-name">이름 <span class="muted">(비워 두면 익명)</span></label>
-          <input id="entry-name" type="text" maxlength="20" placeholder="예) 홍길동 / 디자인팀 산타" autocomplete="nickname" />
-          <button id="enter-btn" class="btn btn-primary btn-lg">입장하기</button>
-          <p class="muted small">회원가입 없이 바로 입장합니다 · 소리가 함께 나와요 🔔</p>
-        </div>
-      </div>
+      <p class="eyebrow">MERRY CHRISTMAS</p>
+      <h1 id="entry-title">하늘님의 오두막</h1>
+      <p class="sub">벽난로 옆 트리에 따뜻한 한마디를 걸어 주세요</p>
+      <label class="field-label" for="entry-name">내 이름 <span class="muted">(비워 두면 익명)</span></label>
+      <input id="entry-name" type="text" maxlength="20" placeholder="예) 홍길동" autocomplete="nickname" />
+      <button id="enter-btn" class="btn btn-primary btn-lg">들어가기</button>
+      <p class="muted small">🔥 벽난로 소리가 함께 나와요</p>
     </div>
   </section>
 
@@ -46,101 +31,70 @@
   <div id="hud" class="hud" hidden>
     <div class="hud-top">
       <div class="brand">
-        <strong id="hud-title">연말 산사 빌리지</strong>
-        <span class="brand-meta"><span id="hud-room"></span> · <span id="hud-count"></span> · <span id="hud-online"></span></span>
+        <strong id="hud-title">우리의 소원트리</strong>
+        <span class="brand-meta" id="hud-meta"></span>
         <span id="hud-seal" class="seal-badge" hidden></span>
       </div>
       <div class="hud-buttons">
-        <button class="icon-btn" id="btn-sound" title="소리 켜기/끄기" aria-label="소리 켜기/끄기">🔊</button>
-        <button class="icon-btn" id="btn-list" title="소원 모아보기" aria-label="소원 모아보기">📜</button>
-        <button class="icon-btn" id="btn-help" title="조작 방법" aria-label="조작 방법">❔</button>
-        <button class="icon-btn" id="btn-admin" title="운영진" aria-label="운영진 관리">⚙️</button>
+        <button class="icon-btn" id="btn-sound" aria-label="소리 켜기/끄기">🔊</button>
+        <button class="icon-btn" id="btn-list" aria-label="메시지 모아보기">📜</button>
+        <button class="icon-btn" id="btn-admin" aria-label="관리">⚙️</button>
       </div>
     </div>
     <div class="hud-bottom">
-      <div class="reactions" role="toolbar" aria-label="리액션">
-        <button data-react="bow" title="합장">🙏<span>합장</span></button>
-        <button data-react="moktak" title="목탁">🪵<span>목탁</span></button>
-        <button data-react="bell" title="범종">🔔<span>범종</span></button>
-        <button data-react="wave" title="인사">👋<span>인사</span></button>
-        <button data-react="tree" title="트리 앞으로">🎄<span>트리로</span></button>
-      </div>
-      <button id="btn-compose" class="btn btn-primary btn-compose">✨ 소원 달기</button>
-      <div class="merit" id="merit"></div>
+      <p class="hint" id="hint">장식을 눌러 메시지를 읽어 보세요</p>
+      <button id="btn-compose" class="btn btn-primary btn-compose">✍️ 트리에 메시지 걸기</button>
     </div>
   </div>
 
-  <div id="joystick" class="joystick"><div class="knob"></div></div>
   <div id="toasts" class="toasts" aria-live="polite"></div>
-  <div id="tooltip" class="tooltip" hidden></div>
 
-  <!-- 작성 모달 -->
+  <!-- 작성 -->
   <div class="modal" id="compose-modal" hidden>
     <form class="sheet" id="compose-form" autocomplete="off">
-      <header class="sheet-head"><h2>소원 달기</h2><button type="button" class="icon-btn close" data-close aria-label="닫기">✕</button></header>
+      <header class="sheet-head"><h2 id="compose-title">메시지 걸기</h2><button type="button" class="icon-btn close" data-close aria-label="닫기">✕</button></header>
       <label class="field-label">장식 고르기</label>
       <div class="type-grid" id="type-grid"></div>
-      <label class="field-label">걸 곳</label>
-      <div class="chips" id="zone-chips"></div>
+      <label class="field-label" for="c-message">메시지 <span class="muted" id="c-count">0/140</span></label>
+      <textarea id="c-message" rows="4" maxlength="140" placeholder="올해 고마웠던 마음을 적어 주세요" required></textarea>
       <div class="row">
-        <div class="grow">
-          <label class="field-label" for="c-author">작성자</label>
-          <input id="c-author" type="text" maxlength="20" placeholder="이름" />
-        </div>
+        <div class="grow"><label class="field-label" for="c-author">보내는 사람</label><input id="c-author" type="text" maxlength="20" placeholder="이름" /></div>
         <label class="check"><input type="checkbox" id="c-anon" /> 익명</label>
       </div>
-      <label class="field-label" for="c-message">메시지 <span class="muted" id="c-count">0/120</span></label>
-      <textarea id="c-message" rows="3" maxlength="120" placeholder="올해 고마웠던 동료에게, 혹은 내년의 나에게…" required></textarea>
       <p class="muted small" id="c-seal-note" hidden></p>
       <p class="form-error" id="c-error" hidden></p>
-      <button type="submit" class="btn btn-primary btn-lg" id="c-submit">걸기</button>
+      <button type="submit" class="btn btn-primary btn-lg" id="c-submit">트리에 걸기</button>
     </form>
   </div>
 
   <!-- 읽기 카드 -->
   <div class="modal" id="card-modal" hidden>
-    <article class="hanji">
+    <article class="xcard">
       <button type="button" class="icon-btn close" data-close aria-label="닫기">✕</button>
-      <div class="hanji-icon" id="card-icon"></div>
-      <p class="hanji-type" id="card-type"></p>
-      <blockquote class="hanji-msg" id="card-msg"></blockquote>
-      <p class="hanji-author" id="card-author"></p>
-      <p class="hanji-date" id="card-date"></p>
-      <div class="hanji-nav"><button class="btn btn-ghost" id="card-prev">← 이전</button><button class="btn btn-ghost" id="card-next">다음 →</button></div>
+      <div class="xcard-icon" id="card-icon"></div>
+      <p class="xcard-to" id="card-to"></p>
+      <blockquote class="xcard-msg" id="card-msg"></blockquote>
+      <p class="xcard-from" id="card-author"></p>
+      <p class="xcard-date" id="card-date"></p>
+      <div class="xcard-nav"><button class="btn btn-ghost" id="card-prev">← 이전</button><button class="btn btn-ghost" id="card-next">다음 →</button></div>
     </article>
   </div>
 
   <!-- 모아보기 -->
   <div class="modal drawer-wrap" id="list-modal" hidden>
     <aside class="drawer">
-      <header class="sheet-head"><h2>소원 모아보기</h2><button type="button" class="icon-btn close" data-close aria-label="닫기">✕</button></header>
-      <div class="chips small" id="list-filter"></div>
+      <header class="sheet-head"><h2>롤링페이퍼 모아보기</h2><button type="button" class="icon-btn close" data-close aria-label="닫기">✕</button></header>
       <input type="search" id="list-search" placeholder="이름이나 내용으로 찾기" />
       <ul class="list" id="list-items"></ul>
     </aside>
   </div>
 
-  <!-- 도움말 -->
-  <div class="modal" id="help-modal" hidden>
-    <div class="sheet">
-      <header class="sheet-head"><h2>조작 방법</h2><button type="button" class="icon-btn close" data-close aria-label="닫기">✕</button></header>
-      <ul class="help-list">
-        <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 방향키 — 이동 (<kbd>Shift</kbd> 달리기)</li>
-        <li>마우스 드래그 — 시점 회전 · 휠 — 줌 · <kbd>Q</kbd><kbd>E</kbd> 회전</li>
-        <li>모바일 — 왼쪽 아래 조이스틱 이동 · 드래그 회전 · 핀치 줌</li>
-        <li>장식 클릭/탭 — 작성자와 메시지 읽기</li>
-        <li>목탁 · 범종 · 처마 끝 풍경을 눌러 보세요</li>
-        <li><kbd>Enter</kbd> 소원 달기 · <kbd>Esc</kbd> 닫기 / 시점 복귀</li>
-      </ul>
-    </div>
-  </div>
-
-  <!-- 운영진 패널 -->
+  <!-- 관리 -->
   <div class="modal drawer-wrap" id="admin-modal" hidden>
     <aside class="drawer admin">
-      <header class="sheet-head"><h2>운영진 관리</h2><button type="button" class="icon-btn close" data-close aria-label="닫기">✕</button></header>
+      <header class="sheet-head"><h2>관리</h2><button type="button" class="icon-btn close" data-close aria-label="닫기">✕</button></header>
       <form id="admin-login" class="admin-login">
-        <label class="field-label" for="admin-pw">운영진 비밀번호</label>
+        <label class="field-label" for="admin-pw">관리자 비밀번호</label>
         <div class="row"><input id="admin-pw" type="password" autocomplete="current-password" class="grow" /><button class="btn btn-primary" type="submit">로그인</button></div>
         <p class="form-error" id="admin-error" hidden></p>
         <p class="muted small" id="admin-mode-note"></p>
@@ -150,7 +104,7 @@
           <h3>봉인 모드</h3>
           <label class="switch"><input type="checkbox" id="seal-toggle" /> <span>지정일 전까지 메시지 잠그기</span></label>
           <div class="row"><input type="datetime-local" id="seal-until" class="grow" /><button class="btn" id="seal-save">저장</button></div>
-          <p class="muted small">봉인 중에는 작성자/장식은 보이지만 메시지 내용은 열람 시각 이후에 공개됩니다.</p>
+          <p class="muted small">봉인 중에는 누가 걸었는지는 보이지만 내용은 지정 시각 이후에 열립니다.</p>
         </section>
         <section class="admin-section">
           <h3>현황</h3>
@@ -160,7 +114,7 @@
         <section class="admin-section">
           <h3>메시지 관리</h3>
           <div class="chips small" id="admin-filter"></div>
-          <input type="search" id="admin-search" placeholder="검색 (중복 메시지 찾기 등)" />
+          <input type="search" id="admin-search" placeholder="검색" />
           <ul class="list admin-list" id="admin-items"></ul>
         </section>
       </div>

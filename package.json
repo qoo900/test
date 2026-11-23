@@ -1,7 +1,7 @@
 {
-  "name": "sansa-village",
+  "name": "wish-tree",
   "version": "1.0.0",
-  "description": "연말 산사 빌리지 - 눈 내리는 산사 마당과 크리스마스 트리가 어우러진 사내 연말 이벤트용 3D 웹 공간",
+  "description": "우리의 소원트리 - 벽난로가 타오르는 오두막 거실 트리에 롤링페이퍼를 거는 연말 3D 웹",
   "type": "module",
   "private": true,
   "scripts": {
