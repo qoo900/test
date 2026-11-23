@@ -188,6 +188,9 @@ export function buildRoomView(container, { low, onReady, onPick, canInteract = (
         shadeOn = new THREE.MeshBasicMaterial({ map: m.map || null, color: '#dfa462', side: THREE.DoubleSide });
         o.material = shadeOn;
       }
+      // 실내 식물(트리·화환·맨틀 가랜드 잎)을 더 싱그러운 초록으로 — 원래 색(#94af88)은 따뜻한 조명 아래 누렇게 보임
+      if (name === '_Color_A03_2') { m.color.set('#367c4b'); m.roughness = 0.8; }
+      if (name === '_Color_A03_10') m.color.set('#1f5232');
       if (name === '_Color_A03_') o.visible = false; // 트리 옆 사각 빛 평면은 어색해서 숨김
       if (name === '__') { o.material = new THREE.MeshBasicMaterial({ map: m.map, transparent: true, depthWrite: false, opacity: 0.35, side: THREE.DoubleSide }); }
       // 벽 위쪽 가랜드 줄(_Color_A03_38) → 작은 전구
