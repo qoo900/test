@@ -43,7 +43,7 @@ class LocalApi {
   constructor(room) {
     this.mode = 'local';
     this.room = room;
-    this.key = `wishtree:${room}`;
+    this.key = `wishtree:v2:${room}`;
     this.isAdmin = false;
     this.data = this.load();
   }

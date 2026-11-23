@@ -2,7 +2,8 @@
 const base = Date.parse('2026-11-20T09:00:00+09:00');
 const t = (h) => new Date(base + h * 3600_000).toISOString();
 
-export const SAMPLE_ITEMS = [
+// 처음에는 빈 트리로 시작합니다. 데모가 필요하면 SAMPLE_ITEMS = DEMO_ITEMS 로 바꾸세요.
+export const DEMO_ITEMS = [
   { type: 'letter',    author: '박서준', message: '하늘님, 올 한 해 옆자리에서 든든했어요. 내년에도 잘 부탁해요! 🎄', createdAt: t(1) },
   { type: 'red_ball',  author: '이도윤', message: '매일 아침 커피 챙겨줘서 고마워요 ☕', createdAt: t(2) },
   { type: 'star',      author: '한지우', message: '신입 때 하나하나 알려주신 거 잊지 않을게요. 당신은 우리 팀의 별 ⭐', createdAt: t(3) },
@@ -27,3 +28,5 @@ export const SAMPLE_ITEMS = [
   { type: 'red_ball',  author: '송유나', message: '새해엔 하고 싶은 일 다 이루길 바라요 ✨', createdAt: t(22) },
   { type: 'gift',      author: '노태민', message: '마니또 선물은 비밀이에요 🤫🎁', createdAt: t(23) },
 ];
+
+export const SAMPLE_ITEMS = [];

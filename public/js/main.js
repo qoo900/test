@@ -54,9 +54,17 @@ const compose = setupCompose({
   },
 });
 const list = setupList({ getItems: visibleItems, onPick: (it) => { closeModal('list-modal'); openItem(it.id); } });
+// 트리 근처(약 2.5m)에서만 선물 놓기·메시지 읽기 버튼이 보임
+function syncNearUi() {
+  const room = document.body.classList.contains('room-mode');
+  const on = entered && (nearTree || !room);
+  $('#btn-compose').hidden = !on;
+  $('#btn-read').hidden = !(entered && nearTree);
+  $('#near-hint').hidden = !(entered && room && !nearTree);
+}
 $('#btn-compose').addEventListener('click', () => compose.open());
 // 트리 근처에서: 최근 메시지부터 카드로 (이전/다음으로 넘기기)
-$('#btn-read').addEventListener('click', () => { const l = visibleItems().sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)); if (l.length) openItem(l[0].id); else toast('아직 놓인 선물이 없어요'); });
+$('#btn-read').addEventListener('click', () => { const l = visibleItems().sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)); if (l.length) openItem(l[0].id); else toast('아직 받은 메시지가 없어요. 첫 선물을 놓아 보세요 🎁'); });
 $('#btn-list').addEventListener('click', () => list.open());
 const soundBtn = $('#btn-sound');
 const syncSound = () => { soundBtn.textContent = sound.muted ? '🔇' : '🔊'; };
@@ -71,7 +79,7 @@ musicBtn.addEventListener('click', () => {
 }); syncMusic();
 addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { if (!closeTop()) view?.unfocus(); return; }
-  if (entered && !anyModalOpen() && e.key === 'Enter' && !e.target.closest?.('input,textarea')) { e.preventDefault(); compose.open(); }
+  if (entered && !anyModalOpen() && e.key === 'Enter' && !$('#btn-compose').hidden && !e.target.closest?.('input,textarea')) { e.preventDefault(); compose.open(); }
 });
 
 (async function start() {
@@ -83,7 +91,7 @@ addEventListener('keydown', (e) => {
   if (hasModel && (!forced || forced === 'room')) {
     document.body.classList.add('room-mode');
     const { buildRoomView } = await import('./room/roomView.js');
-    view = buildRoomView(app, { low, onPick: openItem, onNear: (n) => { nearTree = n; $('#btn-read').hidden = !(n && entered); }, canInteract: () => entered && !anyModalOpen() });
+    view = buildRoomView(app, { low, onPick: openItem, onNear: (n) => { nearTree = n; syncNearUi(); }, canInteract: () => entered && !anyModalOpen() });
     // 낮·밤 선택: ?time=day|night > 저장된 선택 > 기본 밤
     let saved = null; try { saved = localStorage.getItem('tree-time'); } catch { /* ignore */ }
     const initial = new URLSearchParams(location.search).get('time') || saved || 'night';
@@ -111,8 +119,9 @@ addEventListener('keydown', (e) => {
     onEnter: ({ name }) => {
       me.name = name; entered = true; sound.init();
       document.body.classList.add('entered');
-      $('#btn-read').hidden = !nearTree;
+      syncNearUi();
       if (musicPref) setTimeout(() => sound.startMusic(), 1500);
+      setTimeout(() => { if (!sound.running && !sound.muted) toast('🔈 화면을 한 번 누르면 소리가 나와요', 4000); }, 1200);
       $('#hud').hidden = false;
       setTimeout(() => { $('#hint').classList.add('gone'); $('#walk-hint').classList.add('gone'); }, 8000);
       if (CONFIG.itemId) setTimeout(() => openItem(CONFIG.itemId), 500);

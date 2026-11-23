@@ -113,6 +113,12 @@ export class Walker {
       }
       this.pos.y = 1.5 + Math.sin(this.bob) * 0.012;
     }
+    // 시선 제한: 항상 거실의 중심(트리·벽난로 쪽)을 기준으로 좌우 약 55°까지만 → 뒤쪽 빈 벽을 보지 않게
+    if (!this.focus) {
+      const fx = -0.6, fz = -2.0; const center = Math.atan2(-(fx - this.pos.x), -(fz - this.pos.z));
+      let d = this.yaw - center; d = Math.atan2(Math.sin(d), Math.cos(d));
+      const lim = 0.95; if (d > lim) this.yaw = center + lim; else if (d < -lim) this.yaw = center - lim;
+    }
     this.camera.position.copy(this.pos);
     const dir = new THREE.Vector3(-Math.sin(this.yaw) * Math.cos(this.pitch), Math.sin(this.pitch), -Math.cos(this.yaw) * Math.cos(this.pitch));
     this.camera.lookAt(this.pos.clone().add(dir));

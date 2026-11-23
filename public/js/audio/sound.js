@@ -10,13 +10,34 @@ class SoundEngine {
   }
 
   init() {
-    if (this.ctx) { this.ctx.resume?.(); return; }
+    // iOS: 무음 스위치가 켜져 있어도 소리가 나도록 '재생' 세션으로 (Safari 17+), 구형은 무음 오디오 태그로 세션 전환
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* ignore */ }
+    this.unlockTag();
+    if (this.ctx) { if (this.ctx.state !== 'running') this.ctx.resume?.(); return; }
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     this.ctx = new AC();
+    if (this.ctx.state !== 'running') this.ctx.resume?.();
+    // 브라우저가 소리를 막아 두었으면 다음 터치/키 입력 때 다시 켬
+    const wake = () => { if (this.ctx && this.ctx.state !== 'running') this.ctx.resume?.(); };
+    addEventListener('pointerdown', wake, true); addEventListener('keydown', wake, true);
     this.master = this.ctx.createGain(); this.master.gain.value = this.muted ? 0 : 0.9;
     this.master.connect(this.ctx.destination);
     this.startFire();
   }
+
+  unlockTag() {
+    if (this._tag) return;
+    try {
+      // 0.2초짜리 무음 WAV를 만들어 반복 재생 (오디오 세션을 '미디어 재생'으로 바꾸는 용도)
+      const sr = 8000, n = 1600, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+      const w = (o, str) => [...str].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+      w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+      v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+      const a = new Audio(URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }))); a.loop = true; a.volume = 0.01; a.setAttribute('playsinline', '');
+      a.play().catch(() => {}); this._tag = a;
+    } catch { /* ignore */ }
+  }
+  get running() { return !!this.ctx && this.ctx.state === 'running'; }
 
   setMuted(m) {
     this.muted = m;
@@ -47,6 +68,13 @@ class SoundEngine {
     const lfo = c.createOscillator(); lfo.frequency.value = 0.3; const lg = c.createGain(); lg.gain.value = 0.06;
     lfo.connect(lg); lg.connect(g.gain);
     src.connect(lp); lp.connect(g); g.connect(this.master); src.start(); lfo.start();
+    // 눈 내리는 소리: 창밖 바람에 눈이 스치는 듯한 부드러운 쉬익 소리
+    const wsrc = c.createBufferSource(); wsrc.buffer = this.noise(); wsrc.loop = true; wsrc.playbackRate.value = 1.7;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1100; bp.Q.value = 0.6;
+    const wg = c.createGain(); wg.gain.value = 0.05;
+    const wl = c.createOscillator(); wl.frequency.value = 0.08; const wlg = c.createGain(); wlg.gain.value = 0.035; wl.connect(wlg); wlg.connect(wg.gain);
+    const bl = c.createOscillator(); bl.frequency.value = 0.05; const blg = c.createGain(); blg.gain.value = 350; bl.connect(blg); blg.connect(bp.frequency);
+    wsrc.connect(bp); bp.connect(wg); wg.connect(this.master); wsrc.start(); wl.start(); bl.start();
     // 장작 튀는 소리
     const crackle = () => {
       if (!document.hidden) {
@@ -112,13 +140,13 @@ class SoundEngine {
     if (!this.ctx || this.musicOn) return;
     this.musicOn = true;
     if (!this.musicGain) {
-      this.musicGain = this.ctx.createGain(); this.musicGain.gain.value = 0.11;
+      this.musicGain = this.ctx.createGain(); this.musicGain.gain.value = 0.16;
       // 잔향 느낌: 짧은 딜레이 피드백
       const d = this.ctx.createDelay(1); d.delayTime.value = 0.33; const fb = this.ctx.createGain(); fb.gain.value = 0.35;
       const lp = this.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3000;
       this.musicGain.connect(this.master); this.musicGain.connect(d); d.connect(lp); lp.connect(fb); fb.connect(d); lp.connect(this.master);
     }
-    this.musicGain.gain.setTargetAtTime(0.11, this.ctx.currentTime, 0.5);
+    this.musicGain.gain.setTargetAtTime(0.16, this.ctx.currentTime, 0.5);
     const eighth = 0.36;
     const play = () => {
       if (!this.musicOn) return;
