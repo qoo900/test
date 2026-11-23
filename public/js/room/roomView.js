@@ -11,6 +11,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { glowTexture, rng } from '../util.js';
 import { Walker } from './walker.js';
 import { RoomOrnaments } from './ornaments.js';
+import { buildOutside } from './outside.js';
 
 export const MODEL_URL = './models/room.glb';
 const SCALE = 100;
@@ -87,26 +88,9 @@ export function buildRoomView(container, { low, onReady, onPick, canInteract = (
   lampUp.target.position.set(bulbPos.x + 0.1, 3.3, bulbPos.z); scene.add(lampUp, lampUp.target);
   const lampFill = new THREE.PointLight('#ffc98a', 0.18, 0, 2); lampFill.position.copy(bulbPos).add(new THREE.Vector3(0.45, -0.3, 0)); scene.add(lampFill);
 
-  // ── 창밖 밤 풍경 + 눈 ──
-  const nt = nightTex(); const dt2 = dayTex();
-  const back = new THREE.Mesh(new THREE.PlaneGeometry(14, 7), new THREE.MeshBasicMaterial({ map: nt, fog: false }));
-  back.position.set(0, 1.6, -4.2); scene.add(back);
-  const side = new THREE.Mesh(new THREE.PlaneGeometry(14, 7), new THREE.MeshBasicMaterial({ map: nt, fog: false }));
-  side.rotation.y = -Math.PI / 2; side.position.set(4.2, 1.6, 0); scene.add(side);
-  const snowN = low ? 420 : 900; const sp = new Float32Array(snowN * 3); const sd = new Float32Array(snowN); const r = rng(5);
-  for (let i = 0; i < snowN; i++) {
-    if (i % 2) sp.set([-3 + r() * 6.5, r() * 3.6, -2.95 - r() * 1.1], i * 3); else sp.set([2.95 + r() * 1.1, r() * 3.6, -3 + r() * 6.5], i * 3);
-    sd[i] = r();
-  }
-  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
-  const snow = new THREE.Points(sg, new THREE.PointsMaterial({ size: 0.055, map: glowTexture(), color: '#f2f6ff', transparent: true, depthWrite: false }));
-  snow.frustumCulled = false; scene.add(snow);
-  let st = 0;
-  updaters.push((dt) => {
-    st += dt;
-    for (let i = 0; i < snowN; i++) { const k = i * 3; sp[k + 1] -= (0.35 + sd[i] * 0.45) * dt; sp[k + (i % 2 ? 0 : 2)] += (Math.sin(st * 0.7 + sd[i] * 40) * 0.18 + 0.06) * dt; if (sp[k + 1] < 0) sp[k + 1] += 3.6; }
-    sg.attributes.position.needsUpdate = true;
-  });
+  // ── 창밖 3D 풍경 (숲·설산·이웃 오두막·가로등·눈) ──
+  const outside = buildOutside(scene, { low });
+  updaters.push((dt) => outside.update(dt));
 
   // ── 창틀: 모델의 창은 뚫린 구멍뿐이라 흰 나무 창틀·창살·창턱·유리를 덧붙임 ──
   {
@@ -160,9 +144,8 @@ export function buildRoomView(container, { low, onReady, onPick, canInteract = (
     if (lampGlow) lampGlow.visible = !day;
     if (starGlow) starGlow.material.opacity = day ? 0.25 : 0.5;
     renderer.toneMappingExposure = day ? 1.0 : 0.9; bloom.strength = day ? 0.18 : (low ? 0.35 : 0.45);
-    back.material.map = side.material.map = day ? dt2 : nt; back.material.needsUpdate = side.material.needsUpdate = true;
+    outside.setTime(day);
     scene.background.set(day ? '#cfe0f5' : '#05070f');
-    snow.material.color.set(day ? '#ffffff' : '#f2f6ff'); snow.material.opacity = day ? 0.85 : 1;
     patch.visible = day;
     document.body.classList.toggle('day', day);
   }
