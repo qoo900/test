@@ -26,7 +26,7 @@ const lam = (color, extra = {}) => { const k = color + JSON.stringify(extra); if
 const hitMat = new THREE.MeshBasicMaterial({ visible: false });
 const GIFT = [['#a3162a', '#f0d27a'], ['#1d5a37', '#f5f1ea'], ['#2b4f8c', '#f0d27a'], ['#f5f1ea', '#c8202f']];
 
-function buildMesh(item) {
+export function buildMesh(item) {
   const type = ITEM_TYPES[item.type]; const g = new THREE.Group(); const h = hashStr(item.id);
   switch (type.kind) {
     case 'ball': {

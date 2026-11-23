@@ -10,6 +10,7 @@ import { $, toast, setupEntry, setHud, setupCompose, showCard, setupList, closeM
 import { setupAdmin } from './ui/admin.js';
 
 const low = CONFIG.isTouch || (navigator.deviceMemory && navigator.deviceMemory < 4);
+if (CONFIG.isTouch) document.body.classList.add('touch');
 let view = null;
 let api; let state = { items: [], settings: {}, sealed: false }; const me = { name: '' }; let entered = false;
 const owner = () => state.settings.owner || '친구';
@@ -80,7 +81,7 @@ addEventListener('keydown', (e) => {
   if (hasModel && (!forced || forced === 'room')) {
     document.body.classList.add('room-mode');
     const { buildRoomView } = await import('./room/roomView.js');
-    view = buildRoomView(app, { low });
+    view = buildRoomView(app, { low, onPick: openItem, canInteract: () => entered && !anyModalOpen() });
   } else if (hasPhoto && forced !== '3d') {
     document.body.classList.add('photo-mode');
     view = buildPhotoScene(app, { onPick: openItem });
@@ -99,7 +100,7 @@ addEventListener('keydown', (e) => {
       document.body.classList.add('entered');
       if (musicPref) setTimeout(() => sound.startMusic(), 1500);
       $('#hud').hidden = false;
-      setTimeout(() => $('#hint').classList.add('gone'), 7000);
+      setTimeout(() => { $('#hint').classList.add('gone'); $('#walk-hint').classList.add('gone'); }, 8000);
       if (CONFIG.itemId) setTimeout(() => openItem(CONFIG.itemId), 500);
       if (api.mode === 'server') setInterval(() => { if (!document.hidden) refresh(); }, CONFIG.pollItemsMs);
     },

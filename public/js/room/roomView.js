@@ -9,6 +9,8 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { glowTexture, rng } from '../util.js';
+import { Walker } from './walker.js';
+import { RoomOrnaments } from './ornaments.js';
 
 export const MODEL_URL = './models/room.glb';
 const SCALE = 100;
@@ -42,7 +44,7 @@ const nightTex = () => canvasTex(1024, 512, (ctx, w, h) => {
   ridge(h * 0.78, 10, '#cfdcf2'); ridge(h * 0.86, 6, '#e8eefb');
 });
 
-export function buildRoomView(container, { low, onReady }) {
+export function buildRoomView(container, { low, onReady, onPick, canInteract = () => true }) {
   const renderer = new THREE.WebGLRenderer({ antialias: !low, powerPreference: low ? 'default' : 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, low ? 1.25 : 1.75));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -61,7 +63,7 @@ export function buildRoomView(container, { low, onReady }) {
   const moon = new THREE.DirectionalLight('#7f9cff', 0.22); moon.position.set(4, 5, -6); scene.add(moon);
   const fire = new THREE.PointLight('#ff7a2c', 5, 0, 2); fire.position.copy(SPOT.fire).add(new THREE.Vector3(0, 0.1, 0.45)); scene.add(fire);
   const treeL = new THREE.PointLight('#ffc477', 1.7, 0, 2); treeL.position.copy(SPOT.tree).add(new THREE.Vector3(0.55, 1.5, 1.25)); scene.add(treeL);
-  const lamp = new THREE.PointLight('#ffc98a', 2.6, 0, 2); lamp.position.copy(SPOT.lamp).add(new THREE.Vector3(0.12, -0.02, 0)); scene.add(lamp);
+  const lamp = new THREE.PointLight('#ffc98a', 2.1, 0, 2); lamp.position.copy(SPOT.lamp).add(new THREE.Vector3(0.12, -0.02, 0)); scene.add(lamp);
 
   // ── 창밖 밤 풍경 + 눈 ──
   const nt = nightTex();
@@ -137,14 +139,14 @@ export function buildRoomView(container, { low, onReady }) {
       }
       if (name === 'Color_A02' || name === '_Color_A03_10') { o.material = m.clone(); o.material.color.multiplyScalar(0.35); }
       if (name === '_Color_A03_28') { // 스탠드 전등 갓: 안에서 불이 켜진 것처럼
-        o.material = new THREE.MeshStandardMaterial({ map: m.map || null, color: '#fff1d6', emissive: '#ffbf73', emissiveIntensity: 0.55, roughness: 0.9, side: THREE.DoubleSide });
+        o.material = new THREE.MeshStandardMaterial({ map: m.map || null, color: '#fff1d6', emissive: '#ffbf73', emissiveIntensity: 0.35, roughness: 0.9, side: THREE.DoubleSide });
       }
       if (name === '_Color_A03_') o.visible = false; // 트리 옆 사각 빛 평면은 어색해서 숨김
       if (name === '__') { o.material = new THREE.MeshBasicMaterial({ map: m.map, transparent: true, depthWrite: false, opacity: 0.35, side: THREE.DoubleSide }); }
       // 벽 위쪽 가랜드 줄(_Color_A03_38) → 작은 전구
       if (name === '_Color_A03_38') sampleVerts(o, 400, (q) => swagVerts.push(q.clone()));
       if (name === '_Color_A03_2') {
-        const per = o.isInstancedMesh ? Math.max(4, Math.floor(6000 / o.count)) : 6000;
+        const per = o.isInstancedMesh ? Math.max(12, Math.floor(40000 / o.count)) : 20000;
         sampleVerts(o, per, (q) => {
           if (Math.hypot(q.x - SPOT.tree.x, q.z - SPOT.tree.z) < 0.95) treeVerts.push(q.clone());
           else if (Math.abs(q.x) < 1.3 && q.z < -2.4 && q.y > 1.1 && q.y < 1.6) mantelVerts.push(q.clone()); // 맨틀 가랜드
@@ -191,34 +193,48 @@ export function buildRoomView(container, { low, onReady }) {
     });
     // 은은한 후광: 벽난로, 트리 꼭대기, 스탠드
     const fg = glow('#ff8a3a', 1.3, 0.35); fg.position.copy(SPOT.fire).add(new THREE.Vector3(0, 0.05, 0.25)); scene.add(fg);
-    const lg2 = glow('#ffc070', 0.6, 0.2); lg2.position.copy(SPOT.lamp); scene.add(lg2);
+    const lg2 = glow('#ffc070', 0.55, 0.12); lg2.position.copy(SPOT.lamp); scene.add(lg2);
     const lgd = glow('#ffb860', 0.6, 0.12); lgd.position.copy(SPOT.lamp).add(new THREE.Vector3(0.05, -0.35, 0)); scene.add(lgd);
     const tg = glow('#ffcf7a', 0.7, 0.4); tg.position.set(SPOT.tree.x, 2.5, SPOT.tree.z); scene.add(tg);
     updaters.push((dt, t) => {
       fire.intensity = 4.8 + Math.sin(t * 11) * 0.8 + Math.sin(t * 27) * 0.5;
       fg.material.opacity = 0.32 + Math.sin(t * 9) * 0.06;
     });
-    console.info('[room] tree/mantel/swag verts', treeVerts.length, mantelVerts.length, swagVerts.length);
+    // 앞쪽 벽: 모델에 없어서 뒷벽과 같은 벽지 재질로 막음
+    {
+      const rc = new THREE.Raycaster(new THREE.Vector3(-2.2, 1.8, 0), new THREE.Vector3(0, 0, -1)); rc.far = 3.2;
+      const hit = rc.intersectObject(root, true)[0];
+      const wm = hit ? hit.object.material.clone() : new THREE.MeshStandardMaterial({ color: '#d8cbb8' });
+      if (wm.map) { wm.map = wm.map.clone(); wm.map.wrapS = wm.map.wrapT = THREE.RepeatWrapping; wm.map.repeat.set(3, 1.8); wm.map.needsUpdate = true; }
+      wm.side = THREE.DoubleSide;
+      const front = new THREE.Mesh(new THREE.PlaneGeometry(5.62, 3.27), wm); front.position.set(0, 1.635, 2.8); front.rotation.y = Math.PI; scene.add(front);
+      const base = new THREE.Mesh(new THREE.BoxGeometry(5.62, 0.14, 0.03), new THREE.MeshStandardMaterial({ color: '#efe8dc', roughness: 0.6 })); base.position.set(0, 0.07, 2.78); scene.add(base);
+    }
+    // 롤링페이퍼 장식
+    ornaments = new RoomOrnaments(scene, new THREE.Vector3(SPOT.tree.x, 0, SPOT.tree.z), treeVerts);
+    if (pendingItems) ornaments.sync(pendingItems);
+    updaters.push((dt) => ornaments.update(dt));
+    console.info('[room] tree/mantel/swag verts', treeVerts.length, mantelVerts.length, swagVerts.length, 'slots', ornaments.slots.length);
     if (new URLSearchParams(location.search).has('debug')) window.__room = { scene, camera, root, THREE };
     onReady?.();
   }, undefined, (e) => console.error('[room] 모델 로드 실패', e));
 
-  // ── 카메라 (분위기 확인용: 사람 눈높이, 드래그로 둘러보기) ──
-  const view = { pos: new THREE.Vector3(1.75, 1.5, 2.2), yaw: Math.atan2(1.75 + 0.6, 2.2 + 2.2), pitch: -0.08 };
+  // ── 걷기 카메라 ──
+  let ornaments = null; let pendingItems = null;
+  const ray = new THREE.Raycaster(); const ndc = new THREE.Vector2();
+  const walker = new Walker(camera, renderer.domElement, {
+    joystick: document.getElementById('joystick'),
+    onTap: (x, y) => {
+      if (!ornaments || !canInteract()) return;
+      ndc.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera);
+      const h = ray.intersectObjects(ornaments.hits, false)[0];
+      if (h) onPick?.(h.object.userData.itemId);
+    },
+  });
+  updaters.push((dt) => walker.update(dt));
   const q = new URLSearchParams(location.search);
-  if (q.get('cam') === 'tree') Object.assign(view, { pos: new THREE.Vector3(-0.6, 1.35, 0.3), yaw: Math.atan2(-0.6 + 1.6, 0.3 + 1.9), pitch: 0.02 });
-  if (q.get('cam') === 'window') Object.assign(view, { pos: new THREE.Vector3(0.5, 1.5, 0.8), yaw: Math.atan2(0.5 - 1.8, 0.8 + 2.8), pitch: 0.0 });
-  if (q.get('cam') === 'lamp') Object.assign(view, { pos: new THREE.Vector3(0.3, 1.45, 1.2), yaw: Math.atan2(0.3 + 2.5, 1.2 + 0.2), pitch: -0.05 });
-  if (q.get('cam') === 'fire') Object.assign(view, { pos: new THREE.Vector3(0.4, 1.3, 0.6), yaw: Math.atan2(0.4, 0.6 + 2.5), pitch: -0.12 });
-  let drag = null;
-  renderer.domElement.addEventListener('pointerdown', (e) => { drag = [e.clientX, e.clientY]; });
-  addEventListener('pointerup', () => { drag = null; });
-  addEventListener('pointermove', (e) => { if (!drag) return; view.yaw += (e.clientX - drag[0]) * 0.004; view.pitch = Math.max(-0.6, Math.min(0.5, view.pitch - (e.clientY - drag[1]) * 0.003)); drag = [e.clientX, e.clientY]; });
-  function applyCam() {
-    camera.position.copy(view.pos);
-    const dir = new THREE.Vector3(-Math.sin(view.yaw) * Math.cos(view.pitch), Math.sin(view.pitch), -Math.cos(view.yaw) * Math.cos(view.pitch));
-    camera.lookAt(view.pos.clone().add(dir));
-  }
+  const presets = { tree: [-0.55, 0.15, 0.47, 0.05], window: [0.5, 0.8, -0.35, 0.0], lamp: [0.3, 1.2, 1.1, -0.05], fire: [0.4, 0.6, 0.12, -0.12] };
+  if (presets[q.get('cam')]) { const [x, z, yaw, pitch] = presets[q.get('cam')]; walker.pos.set(x, 1.5, z); walker.yaw = yaw; walker.pitch = pitch; }
 
   function onResize() {
     const w = innerWidth, h = innerHeight;
@@ -231,11 +247,15 @@ export function buildRoomView(container, { low, onReady }) {
   (function frame() {
     const dt = Math.min(clock.getDelta(), 0.05); t += dt;
     updaters.forEach((u) => u(dt, t));
-    applyCam();
     composer.render();
     requestAnimationFrame(frame);
   })();
 
-  // 메시지 장식은 분위기 확정 후 붙일 예정 — 지금은 인터페이스만 유지
-  return { mode: 'room', sync() {}, highlight() {}, unfocus() {}, setEnabled() {} };
+  return {
+    mode: 'room',
+    sync(items) { pendingItems = items; ornaments?.sync(items); },
+    highlight(id) { if (!ornaments) return; const p = ornaments.worldPos(id); if (!p) return; ornaments.highlight(id); walker.focusOn(p, ornaments.outward(id)); },
+    unfocus() { ornaments?.clear(); walker.unfocus(); },
+    setEnabled(v) { walker.enabled = v; if (!v) walker.keys.clear(); },
+  };
 }
