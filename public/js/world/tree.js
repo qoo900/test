@@ -62,8 +62,12 @@ export function buildTree(scene, { quality }) {
     const a = (i / lightN) * Math.PI * 2 * 23 + r() * 0.6; const rr = treeRadiusAt(y) * (0.92 + r() * 0.2);
     lp.set([Math.cos(a) * rr, y, Math.sin(a) * rr], i * 3); lph[i] = r() * 6.28;
   }
-  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(lp, 3));
-  const lights = new THREE.Points(lg, new THREE.PointsMaterial({ size: 0.24, map: glowTexture(), color: '#ffcf6a', toneMapped: false, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  // 따뜻한 흰색 위주 + 보라/파랑/분홍/초록이 섞인 전구 (레퍼런스)
+  const pal = [['#ffd27a', 6], ['#fff1cf', 3], ['#c48bff', 1.2], ['#7fb2ff', 1], ['#ff8fc8', 1], ['#9dff9a', 0.7], ['#ff6a5a', 0.6]];
+  const tot = pal.reduce((a, [, w]) => a + w, 0); const lc = new Float32Array(lightN * 3); const cc = new THREE.Color();
+  for (let i = 0; i < lightN; i++) { let x = r() * tot; const hit = pal.find(([, w]) => (x -= w) < 0) || pal[0]; cc.set(hit[0]); lc.set([cc.r, cc.g, cc.b], i * 3); }
+  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(lp, 3)); lg.setAttribute('color', new THREE.BufferAttribute(lc, 3));
+  const lights = new THREE.Points(lg, new THREE.PointsMaterial({ size: 0.24, map: glowTexture(), vertexColors: true, toneMapped: false, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   g.add(lights);
   // 트리 전체의 은은한 후광
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: '#ffb84d', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.35 }));
@@ -79,11 +83,11 @@ export function buildTree(scene, { quality }) {
 
   // 장식용 선물 더미 (클릭 대상 아님): 빨강/금 포장
   const wraps = [
-    new THREE.MeshLambertMaterial({ map: wrapTexture('#b51d25', '#f2c46a') }),
-    new THREE.MeshLambertMaterial({ map: wrapTexture('#d9a55a', '#b51d25') }),
-    new THREE.MeshLambertMaterial({ map: wrapTexture('#c8322e', '#ffffff') }),
+    new THREE.MeshLambertMaterial({ map: wrapTexture('#d8b46a', '#fff3d0') }),  // 금색
+    new THREE.MeshLambertMaterial({ map: wrapTexture('#b8325a', '#f2c46a') }),  // 분홍빛 빨강
+    new THREE.MeshLambertMaterial({ map: wrapTexture('#e6d3b0', '#b8325a') }),  // 크림
   ];
-  const ribbon = new THREE.MeshLambertMaterial({ color: '#f0d27a' });
+  const ribbon = new THREE.MeshLambertMaterial({ color: '#c99a3a', emissive: '#2a1a00' });
   const gifts = [
     [-0.9, 0.55, 0.5, 0.4, 0.5], [-0.35, 0.9, 0.45, 0.5, 0.4], [0.3, 1.0, 0.6, 0.35, 0.45], [0.95, 0.6, 0.5, 0.45, 0.5],
     [1.25, 0.05, 0.45, 0.6, 0.45], [-1.2, -0.05, 0.4, 0.35, 0.4], [0.0, 1.25, 0.35, 0.28, 0.35], [0.6, 0.35, 0.4, 0.3, 0.4],

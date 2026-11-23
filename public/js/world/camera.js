@@ -41,7 +41,7 @@ export class RoomCamera {
   // 세로 화면에서는 트리를 중심으로
   setHome(portrait) {
     this.home = portrait
-      ? { target: new THREE.Vector3(1.1, 1.55, -2.0), yaw: 0.05, pitch: 0.06, dist: 6.2 }
+      ? { target: new THREE.Vector3(1.75, 1.6, -2.0), yaw: 0.04, pitch: 0.06, dist: 6.6 }
       : { target: new THREE.Vector3(0.0, 1.6, -2.2), yaw: 0, pitch: 0.05, dist: 6.3 };
     this.reset();
   }

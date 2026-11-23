@@ -2,7 +2,7 @@
 // 작성 순서대로 슬롯을 배정하므로 위치를 저장하지 않아도 모두에게 같은 자리로 보입니다.
 import * as THREE from 'three';
 
-export const TREE_POS = new THREE.Vector3(1.45, 0, -2.0); // 벽난로 오른쪽, 창가
+export const TREE_POS = new THREE.Vector3(2.55, 0, -2.0); // 벽난로 오른쪽
 export const TREE = { baseY: 0.32, topY: 3.1, radius: 1.35, starY: 3.2 };
 export const treeRadiusAt = (y) => Math.max(0.08, TREE.radius * (1 - (y - TREE.baseY) / (TREE.topY - TREE.baseY + 0.1)));
 
