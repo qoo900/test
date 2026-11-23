@@ -14,7 +14,7 @@ import { setupAdmin } from './ui/admin.js';
 
 // 저사양 기기: 픽셀 비율 낮추고 안티앨리어싱/눈 파티클 줄임
 const low = CONFIG.isTouch || (navigator.deviceMemory && navigator.deviceMemory < 4);
-const quality = { snow: low ? 90 : 180 };
+const quality = { low, snow: low ? 80 : 150 };
 
 const renderer = new THREE.WebGLRenderer({ antialias: !low, powerPreference: low ? 'low-power' : 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, low ? 1.25 : 2));
@@ -26,7 +26,7 @@ $('#app').append(renderer.domElement);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 60);
 const cabin = buildCabin(scene, { quality });
-const tree = buildTree(scene);
+const tree = buildTree(scene, { quality });
 const decorations = new DecorationManager(scene);
 const cam = new RoomCamera(camera, renderer.domElement, { onTap: handleTap });
 

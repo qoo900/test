@@ -5,7 +5,7 @@ import { clamp, damp } from '../util.js';
 export class RoomCamera {
   constructor(camera, dom, { onTap }) {
     this.camera = camera; this.dom = dom; this.onTap = onTap;
-    this.home = { target: new THREE.Vector3(0.3, 1.45, -1.6), yaw: 0, pitch: 0.12, dist: 6.2 };
+    this.home = { target: new THREE.Vector3(0.0, 1.6, -2.2), yaw: 0, pitch: 0.05, dist: 6.3 };
     this.target = this.home.target.clone(); this.yaw = 0; this.pitch = 0.12; this.dist = 6.2;
     this.cur = { target: this.target.clone(), yaw: 0, pitch: 0.12, dist: 6.2 };
     this.focus = null; this.enabled = true;
@@ -41,8 +41,8 @@ export class RoomCamera {
   // 세로 화면에서는 트리를 중심으로
   setHome(portrait) {
     this.home = portrait
-      ? { target: new THREE.Vector3(1.4, 1.5, -1.4), yaw: 0.12, pitch: 0.1, dist: 6.0 }
-      : { target: new THREE.Vector3(0.3, 1.45, -1.6), yaw: 0, pitch: 0.12, dist: 6.2 };
+      ? { target: new THREE.Vector3(1.1, 1.55, -2.0), yaw: 0.05, pitch: 0.06, dist: 6.2 }
+      : { target: new THREE.Vector3(0.0, 1.6, -2.2), yaw: 0, pitch: 0.05, dist: 6.3 };
     this.reset();
   }
   reset() { this.focus = null; this.target.copy(this.home.target); this.yaw = this.home.yaw; this.pitch = this.home.pitch; this.dist = this.home.dist; }
