@@ -1,0 +1,13 @@
+{
+  "name": "sansa-village",
+  "version": "1.0.0",
+  "description": "연말 산사 빌리지 - 눈 내리는 산사 마당과 크리스마스 트리가 어우러진 사내 연말 이벤트용 3D 웹 공간",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
