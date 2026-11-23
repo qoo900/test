@@ -72,10 +72,16 @@ addEventListener('keydown', (e) => {
 });
 
 (async function start() {
-  const [apiObj, hasPhoto] = await Promise.all([createApi(), photoAvailable()]);
+  const { modelAvailable } = await import('./room/roomView.js').catch(() => ({ modelAvailable: async () => false }));
+  const forced = new URLSearchParams(location.search).get('view'); // ?view=room|photo|3d
+  const [apiObj, hasModel, hasPhoto] = await Promise.all([createApi(), forced && forced !== 'room' ? false : modelAvailable(), photoAvailable()]);
   api = apiObj;
   const app = $('#app');
-  if (hasPhoto) {
+  if (hasModel && (!forced || forced === 'room')) {
+    document.body.classList.add('room-mode');
+    const { buildRoomView } = await import('./room/roomView.js');
+    view = buildRoomView(app, { low });
+  } else if (hasPhoto && forced !== '3d') {
     document.body.classList.add('photo-mode');
     view = buildPhotoScene(app, { onPick: openItem });
   } else {
