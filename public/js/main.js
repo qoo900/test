@@ -58,6 +58,14 @@ $('#btn-list').addEventListener('click', () => list.open());
 const soundBtn = $('#btn-sound');
 const syncSound = () => { soundBtn.textContent = sound.muted ? '🔇' : '🔊'; };
 soundBtn.addEventListener('click', () => { sound.init(); sound.setMuted(!sound.muted); syncSound(); }); syncSound();
+const musicBtn = $('#btn-music');
+let musicPref = true; try { musicPref = localStorage.getItem('tree-music') !== '0'; } catch { /* ignore */ }
+const syncMusic = () => { musicBtn.style.opacity = musicPref ? '1' : '.45'; musicBtn.title = musicPref ? '캐럴 끄기' : '캐럴 켜기'; };
+musicBtn.addEventListener('click', () => {
+  sound.init(); musicPref = !musicPref;
+  try { localStorage.setItem('tree-music', musicPref ? '1' : '0'); } catch { /* ignore */ }
+  if (musicPref) sound.startMusic(); else sound.stopMusic(); syncMusic();
+}); syncMusic();
 addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { if (!closeTop()) view?.unfocus(); return; }
   if (entered && !anyModalOpen() && e.key === 'Enter' && !e.target.closest?.('input,textarea')) { e.preventDefault(); compose.open(); }
@@ -82,7 +90,10 @@ addEventListener('keydown', (e) => {
     owner: owner(), defaultName: CONFIG.user,
     onEnter: ({ name }) => {
       me.name = name; entered = true; sound.init();
+      document.body.classList.add('entered');
+      if (musicPref) setTimeout(() => sound.startMusic(), 1500);
       $('#hud').hidden = false;
+      setTimeout(() => $('#hint').classList.add('gone'), 7000);
       if (CONFIG.itemId) setTimeout(() => openItem(CONFIG.itemId), 500);
       if (api.mode === 'server') setInterval(() => { if (!document.hidden) refresh(); }, CONFIG.pollItemsMs);
     },

@@ -33,12 +33,15 @@ export function buildPhotoScene(container, { onPick }) {
       <div class="photo-glows"></div>
       <canvas class="photo-fx"></canvas>
       <div class="photo-orns"></div>
-    </div>`;
+    </div>
+    <canvas class="ambient-fx"></canvas>
+    <div class="photo-grade"></div>`;
   container.append(root);
   const stage = root.querySelector('.photo-stage');
   const orns = root.querySelector('.photo-orns');
   const fx = root.querySelector('.photo-fx'); const ctx = fx.getContext('2d');
   const glows = root.querySelector('.photo-glows');
+  const amb = root.querySelector('.ambient-fx'); const actx = amb.getContext('2d');
   const pct = (x, y) => `left:${(x / PHOTO.w) * 100}%;top:${(y / PHOTO.h) * 100}%`;
 
   PHOTO.glows.forEach((g, i) => {
@@ -63,6 +66,7 @@ export function buildPhotoScene(container, { onPick }) {
     Object.assign(stage.style, { width: `${sw}px`, height: `${sh}px`, left: `${left}px`, top: `${top}px` });
     stage.style.setProperty('--orn', `${Math.max(30, 50 * scale * (PHOTO.w / 1206))}px`);
     fx.width = Math.round(sw * Math.min(devicePixelRatio, 1.5)); fx.height = Math.round(sh * Math.min(devicePixelRatio, 1.5));
+    amb.width = Math.round(W * Math.min(devicePixelRatio, 1.25)); amb.height = Math.round(H * Math.min(devicePixelRatio, 1.25));
   }
   addEventListener('resize', layout); layout();
 
@@ -139,20 +143,44 @@ export function buildPhotoScene(container, { onPick }) {
     const x = PHOTO.tree.cx + (Math.random() * 2 - 1) * halfWidthAt(y) * 0.9;
     return { x, y, t: Math.random() * 3, life: 1.4 + Math.random() * 1.8, s: (0.6 + Math.random()) * (PHOTO.w / 1206) };
   }
-  const MU = PHOTO.w / 1206;
-  const motes = Array.from({ length: 18 }, () => ({ x: Math.random() * PHOTO.w, y: Math.random() * PHOTO.h, v: (6 + Math.random() * 10) * MU, r: (3 + Math.random() * 6) * MU, ph: Math.random() * 6 }));
+  // 화면 전체 분위기 레이어: 금빛 빛망울(보케) + 아주 옅은 눈 — 미리 그린 스프라이트로 가볍게
+  const bokehSprite = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+    const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,214,150,0.55)'); gr.addColorStop(0.6, 'rgba(255,190,110,0.28)'); gr.addColorStop(0.85, 'rgba(255,200,130,0.12)'); gr.addColorStop(1, 'rgba(255,200,130,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return c;
+  })();
+  const flakeSprite = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 16; const g = c.getContext('2d');
+    const gr = g.createRadialGradient(8, 8, 0, 8, 8, 8); gr.addColorStop(0, 'rgba(255,255,255,0.95)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 16, 16); return c;
+  })();
+  const bokeh = Array.from({ length: 16 }, () => ({ x: Math.random(), y: Math.random(), r: 0.025 + Math.random() * 0.06, v: 0.004 + Math.random() * 0.008, ph: Math.random() * 6, a: 0.25 + Math.random() * 0.5 }));
+  const flakes = Array.from({ length: 45 }, () => ({ x: Math.random(), y: Math.random(), r: 1.2 + Math.random() * 2.2, v: 0.015 + Math.random() * 0.025, ph: Math.random() * 6 }));
   let last = performance.now();
   function tick(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (document.hidden) { requestAnimationFrame(tick); return; }
     const k = fx.width / PHOTO.w;
     ctx.clearRect(0, 0, fx.width, fx.height);
     ctx.globalCompositeOperation = 'lighter';
-    for (const m of motes) {
-      m.y -= m.v * dt; m.x += Math.sin(now / 1500 + m.ph) * 4 * MU * dt; if (m.y < -20) { m.y = PHOTO.h + 20; m.x = Math.random() * PHOTO.w; }
-      const g = ctx.createRadialGradient(m.x * k, m.y * k, 0, m.x * k, m.y * k, m.r * k * 2.2);
-      g.addColorStop(0, 'rgba(255,214,150,0.22)'); g.addColorStop(1, 'rgba(255,214,150,0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(m.x * k, m.y * k, m.r * k * 2.2, 0, 7); ctx.fill();
+    // 전체 화면 레이어
+    const AW = amb.width, AH = amb.height, S = Math.min(AW, AH);
+    actx.clearRect(0, 0, AW, AH);
+    actx.globalCompositeOperation = 'lighter';
+    for (const b of bokeh) {
+      b.y -= b.v * dt; b.x += Math.sin(now / 4000 + b.ph) * 0.003 * dt; if (b.y < -0.1) { b.y = 1.1; b.x = Math.random(); }
+      const rr = b.r * S * (1 + 0.08 * Math.sin(now / 1300 + b.ph));
+      actx.globalAlpha = b.a * (0.75 + 0.25 * Math.sin(now / 1700 + b.ph));
+      actx.drawImage(bokehSprite, b.x * AW - rr, b.y * AH - rr, rr * 2, rr * 2);
     }
+    actx.globalCompositeOperation = 'source-over';
+    for (const f of flakes) {
+      f.y += f.v * dt; f.x += Math.sin(now / 2200 + f.ph) * 0.01 * dt; if (f.y > 1.03) { f.y = -0.03; f.x = Math.random(); }
+      actx.globalAlpha = 0.55; const r = f.r * (S / 700) * 2;
+      actx.drawImage(flakeSprite, f.x * AW - r, f.y * AH - r, r * 2, r * 2);
+    }
+    actx.globalAlpha = 1;
     sparks.forEach((s, i) => {
       s.t += dt; if (s.t > s.life) sparks[i] = s = newSpark();
       const a = Math.sin((s.t / s.life) * Math.PI); const r = 7 * s.s * k;

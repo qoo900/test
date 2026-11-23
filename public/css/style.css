@@ -154,3 +154,32 @@ textarea { resize: vertical; min-height: 90px; }
 @keyframes sway { from { rotate: -3deg; } to { rotate: 3deg; } }
 @keyframes pop { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
 body.photo-mode #app { cursor: default; }
+
+/* ── 분위기 레이어 ── */
+.ambient-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.photo-grade { position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 85% 75% at 50% 45%, rgba(0, 0, 0, 0) 55%, rgba(12, 6, 3, .55) 100%),
+    linear-gradient(180deg, rgba(40, 18, 6, .25), rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0) 70%, rgba(20, 8, 3, .45)); }
+/* 입장 전에는 어둡게, 들어가면 서서히 밝아짐 */
+body.photo-mode .photo-stage, body.photo-mode .photo-bg { transition: filter 2.8s ease; }
+body.photo-mode:not(.entered) .photo-stage { filter: brightness(.38) saturate(.8) blur(1.5px); }
+body.photo-mode .photo-orns { transition: opacity 1.6s ease 1.2s; }
+body.photo-mode:not(.entered) .photo-orns { opacity: 0; }
+/* 입장 카드: 분위기를 해치지 않게 투명하고 조용하게 */
+body.photo-mode .entry { background: transparent; }
+body.photo-mode .entry-card { background: rgba(28, 16, 10, .42); border-color: rgba(240, 210, 160, .2); box-shadow: 0 30px 80px rgba(0, 0, 0, .35); }
+.entry-card h1 { font-weight: 700; letter-spacing: .02em; }
+.eyebrow { font-family: var(--serif); font-style: italic; letter-spacing: .35em; }
+.entry { animation: fadeIn 1.4s ease; }
+@keyframes fadeIn { from { opacity: 0; } }
+/* HUD는 은은하게 */
+body.photo-mode .brand, body.photo-mode .icon-btn { background: rgba(28, 16, 10, .38); border-color: rgba(240, 210, 160, .16); }
+body.photo-mode .hud { animation: fadeIn 2s ease 1s both; }
+.hint { transition: opacity 1.2s ease; }
+.hint.gone { opacity: 0; }
+.btn-compose { box-shadow: 0 0 0 1px rgba(217, 181, 106, .35), 0 8px 30px rgba(120, 20, 25, .45), 0 0 40px rgba(255, 180, 90, .18); }
+/* 카드: 부드럽게 펼쳐짐 */
+.xcard { animation: unfold .7s cubic-bezier(.2, .8, .2, 1); transform-origin: 50% 100%; }
+@keyframes unfold { from { opacity: 0; transform: translateY(24px) scale(.94) rotateX(18deg); } }
+.xcard-msg { animation: fadeIn 1.2s ease .25s both; }
