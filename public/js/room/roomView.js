@@ -46,8 +46,9 @@ export function buildRoomView(container, { low, onReady }) {
   renderer.setPixelRatio(Math.min(devicePixelRatio, low ? 1.25 : 1.75));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.95;
+  renderer.toneMappingExposure = 0.9;
   container.append(renderer.domElement);
+  const grade = document.createElement('div'); grade.className = 'room-grade'; container.append(grade);
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#05070f');
@@ -55,10 +56,10 @@ export function buildRoomView(container, { low, onReady }) {
   const updaters = [];
 
   // ── 조명: 밤. 주 광원은 벽난로 / 트리 전구 / 스탠드 ──
-  scene.add(new THREE.HemisphereLight('#ffcf9e', '#2b1a10', 0.12));
+  scene.add(new THREE.HemisphereLight('#ffcf9e', '#2b1a10', 0.08));
   const moon = new THREE.DirectionalLight('#7f9cff', 0.22); moon.position.set(4, 5, -6); scene.add(moon);
   const fire = new THREE.PointLight('#ff7a2c', 5, 0, 2); fire.position.copy(SPOT.fire).add(new THREE.Vector3(0, 0.1, 0.45)); scene.add(fire);
-  const treeL = new THREE.PointLight('#ffc477', 2.2, 0, 2); treeL.position.copy(SPOT.tree).add(new THREE.Vector3(0.3, 1.3, 0.6)); scene.add(treeL);
+  const treeL = new THREE.PointLight('#ffc477', 1.7, 0, 2); treeL.position.copy(SPOT.tree).add(new THREE.Vector3(0.55, 1.5, 1.25)); scene.add(treeL);
   const lamp = new THREE.PointLight('#ffd59a', 1.6, 0, 2); lamp.position.copy(SPOT.lamp).add(new THREE.Vector3(0, 0.45, 0)); scene.add(lamp);
 
   // ── 창밖 밤 풍경 + 눈 ──
@@ -92,10 +93,20 @@ export function buildRoomView(container, { low, onReady }) {
   // ── 모델 로드 ──
   const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
   const glow = (color, size, opacity = 1) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity })); s.scale.setScalar(size); return s; };
+  // 메시(인스턴스 포함)의 정점을 월드 좌표로 샘플링 — 최적화 과정에서 반복 오브젝트가 InstancedMesh로 묶이기 때문
+  const tmpM = new THREE.Matrix4(); const tmpW = new THREE.Matrix4();
+  function sampleVerts(o, maxPerInstance, cb) {
+    const pos = o.geometry.attributes.position; const step = Math.max(1, Math.floor(pos.count / maxPerInstance));
+    const count = o.isInstancedMesh ? o.count : 1; const p = new THREE.Vector3();
+    for (let k = 0; k < count; k++) {
+      if (o.isInstancedMesh) { o.getMatrixAt(k, tmpM); tmpW.multiplyMatrices(o.matrixWorld, tmpM); } else tmpW.copy(o.matrixWorld);
+      for (let i = 0; i < pos.count; i += step) cb(p.fromBufferAttribute(pos, i).applyMatrix4(tmpW));
+    }
+  }
   loader.load(MODEL_URL, (gltf) => {
     const root = gltf.scene; root.scale.setScalar(SCALE); scene.add(root);
     root.updateMatrixWorld(true);
-    const treeVerts = []; const v = new THREE.Vector3();
+    const treeVerts = []; const mantelVerts = []; const swagVerts = []; const v = new THREE.Vector3();
     root.traverse((o) => {
       if (!o.isMesh) return;
       const m = o.material; const name = m?.name || '';
@@ -105,27 +116,57 @@ export function buildRoomView(container, { low, onReady }) {
         o.material = new THREE.MeshBasicMaterial({ map: m.map, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, color: name === '_2' ? new THREE.Color(1.25, 1.0, 0.8) : new THREE.Color(0.28, 0.24, 0.18) });
         if (name === '_2') { const base = o.scale.clone(); updaters.push((dt, t) => { const k = 1 + Math.sin(t * 9) * 0.05 + Math.sin(t * 23) * 0.03; o.scale.set(base.x, base.y * k, base.z); }); }
       }
+      if (name === 'Color_A02' || name === '_Color_A03_10') { o.material = m.clone(); o.material.color.multiplyScalar(0.35); }
       if (name === '_Color_A03_') o.visible = false; // 트리 옆 사각 빛 평면은 어색해서 숨김
       if (name === '__') { o.material = new THREE.MeshBasicMaterial({ map: m.map, transparent: true, depthWrite: false, opacity: 0.35, side: THREE.DoubleSide }); }
-      // 트리 잎 정점 수집 → 전구 위치
+      // 벽 위쪽 가랜드 줄(_Color_A03_38) → 작은 전구
+      if (name === '_Color_A03_38') sampleVerts(o, 400, (q) => swagVerts.push(q.clone()));
       if (name === '_Color_A03_2') {
-        const pos = o.geometry.attributes.position; const step = Math.max(1, Math.floor(pos.count / 2500));
-        for (let i = 0; i < pos.count; i += step) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); if (Math.hypot(v.x - SPOT.tree.x, v.z - SPOT.tree.z) < 0.95) treeVerts.push(v.clone()); }
+        const per = o.isInstancedMesh ? Math.max(4, Math.floor(6000 / o.count)) : 6000;
+        sampleVerts(o, per, (q) => {
+          if (Math.hypot(q.x - SPOT.tree.x, q.z - SPOT.tree.z) < 0.95) treeVerts.push(q.clone());
+          else if (Math.abs(q.x) < 1.3 && q.z < -2.4 && q.y > 1.1 && q.y < 1.6) mantelVerts.push(q.clone()); // 맨틀 가랜드
+        });
       }
     });
 
     // 트리 전구: 바깥쪽 정점 중에서 골라 웜화이트 위주로 (빛 번짐 대상)
-    const rr = rng(21); const lightN = low ? 160 : 260; const lp = []; const lc = []; const col = new THREE.Color();
+    const rr = rng(21); const lightN = low ? 220 : 380; const lp = []; const lc = []; const col = new THREE.Color();
     const pal = ['#ffd28a', '#ffd28a', '#ffd28a', '#fff1d0', '#ffb36b', '#ff8f8f'];
     for (let i = 0; i < lightN && treeVerts.length; i++) {
       const p = treeVerts[Math.floor(rr() * treeVerts.length)];
       const d = new THREE.Vector3(p.x - SPOT.tree.x, 0, p.z - SPOT.tree.z).normalize().multiplyScalar(0.03);
-      lp.push(p.x + d.x, p.y, p.z + d.z); col.set(pal[i % pal.length]).multiplyScalar(1.5); lc.push(col.r, col.g, col.b);
+      lp.push(p.x + d.x, p.y, p.z + d.z); col.set(pal[i % pal.length]).multiplyScalar(2.4); lc.push(col.r, col.g, col.b);
     }
     const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3)); lg.setAttribute('color', new THREE.Float32BufferAttribute(lc, 3));
-    const treeLights = new THREE.Points(lg, new THREE.PointsMaterial({ size: 0.05, map: glowTexture(), vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+    const treeLights = new THREE.Points(lg, new THREE.PointsMaterial({ size: 0.085, map: glowTexture(), vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
     scene.add(treeLights);
-    updaters.push((dt, t) => { treeLights.material.size = 0.05 + Math.sin(t * 2.1) * 0.006; });
+    updaters.push((dt, t) => { treeLights.material.size = 0.085 + Math.sin(t * 2.1) * 0.01; });
+    // 맨틀 가랜드·벽 가랜드에도 웜화이트 전구
+    const fairy = (verts, n, size, seed) => {
+      if (!verts.length) return null; const r2 = rng(seed); const pts = []; const cs = [];
+      for (let i = 0; i < n; i++) { const p = verts[Math.floor(r2() * verts.length)]; pts.push(p.x, p.y - 0.02, p.z); col.set(i % 4 ? '#ffd690' : '#fff0cf').multiplyScalar(1.4); cs.push(col.r, col.g, col.b); }
+      const g2 = new THREE.BufferGeometry(); g2.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3)); g2.setAttribute('color', new THREE.Float32BufferAttribute(cs, 3));
+      const m2 = new THREE.Points(g2, new THREE.PointsMaterial({ size, map: glowTexture(), vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+      scene.add(m2); return m2;
+    };
+    if (!mantelVerts.length) for (let i = 0; i <= 40; i++) { const t2 = i / 40; mantelVerts.push(new THREE.Vector3(-1.0 + t2 * 2.0, 1.24 - Math.sin(t2 * Math.PI * 4) ** 2 * 0.07, -2.38)); }
+    const mantelLights = fairy(mantelVerts, 40, 0.06, 31);
+    const swagLights = fairy(swagVerts, low ? 90 : 150, 0.07, 41);
+    updaters.push((dt, t) => {
+      if (mantelLights) mantelLights.material.opacity = 0.85 + Math.sin(t * 1.7) * 0.15;
+      if (swagLights) swagLights.material.opacity = 0.8 + Math.sin(t * 1.3 + 1) * 0.2;
+    });
+    // 공기 중에 천천히 떠다니는 따뜻한 빛 입자 (벽난로 앞)
+    const moteN = low ? 30 : 60; const mp = new Float32Array(moteN * 3); const ms = new Float32Array(moteN); const r3 = rng(77);
+    for (let i = 0; i < moteN; i++) { mp.set([-1.8 + r3() * 3.6, 0.3 + r3() * 2.4, -2.4 + r3() * 3.4], i * 3); ms[i] = r3(); }
+    const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(mp, 3));
+    const motes = new THREE.Points(mg, new THREE.PointsMaterial({ size: 0.025, map: glowTexture(), color: '#ffcf8a', transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
+    scene.add(motes);
+    updaters.push((dt, t) => {
+      for (let i = 0; i < moteN; i++) { const k = i * 3; mp[k + 1] += (0.03 + ms[i] * 0.04) * dt; mp[k] += Math.sin(t * 0.4 + ms[i] * 20) * 0.03 * dt; if (mp[k + 1] > 2.8) mp[k + 1] = 0.3; }
+      mg.attributes.position.needsUpdate = true;
+    });
     // 은은한 후광: 벽난로, 트리 꼭대기, 스탠드
     const fg = glow('#ff8a3a', 1.3, 0.35); fg.position.copy(SPOT.fire).add(new THREE.Vector3(0, 0.05, 0.25)); scene.add(fg);
     const tg = glow('#ffcf7a', 0.7, 0.4); tg.position.set(SPOT.tree.x, 2.5, SPOT.tree.z); scene.add(tg);
@@ -133,6 +174,7 @@ export function buildRoomView(container, { low, onReady }) {
       fire.intensity = 4.8 + Math.sin(t * 11) * 0.8 + Math.sin(t * 27) * 0.5;
       fg.material.opacity = 0.32 + Math.sin(t * 9) * 0.06;
     });
+    console.info('[room] tree/mantel/swag verts', treeVerts.length, mantelVerts.length, swagVerts.length);
     onReady?.();
   }, undefined, (e) => console.error('[room] 모델 로드 실패', e));
 

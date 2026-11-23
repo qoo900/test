@@ -183,3 +183,14 @@ body.photo-mode .hud { animation: fadeIn 2s ease 1s both; }
 .xcard { animation: unfold .7s cubic-bezier(.2, .8, .2, 1); transform-origin: 50% 100%; }
 @keyframes unfold { from { opacity: 0; transform: translateY(24px) scale(.94) rotateX(18deg); } }
 .xcard-msg { animation: fadeIn 1.2s ease .25s both; }
+
+/* ── 메타버스 거실: 화면 색감 레이어 ── */
+.room-grade { position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 75% at 50% 50%, rgba(0, 0, 0, 0) 50%, rgba(10, 4, 2, .6) 100%),
+    linear-gradient(180deg, rgba(30, 12, 4, .25), rgba(0, 0, 0, 0) 35%, rgba(0, 0, 0, 0) 75%, rgba(25, 8, 3, .35)); }
+body.room-mode #app canvas { transition: filter 2.6s ease; }
+body.room-mode:not(.entered) #app canvas { filter: brightness(.35) blur(2px); }
+body.room-mode .entry { background: transparent; }
+body.room-mode .entry-card { background: rgba(28, 16, 10, .45); border-color: rgba(240, 210, 160, .2); }
+body.room-mode .brand, body.room-mode .icon-btn { background: rgba(28, 16, 10, .38); border-color: rgba(240, 210, 160, .16); }
