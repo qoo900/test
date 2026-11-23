@@ -15,7 +15,8 @@ const SCALE = 100;
 const SPOT = {
   fire: new THREE.Vector3(0, 0.42, -2.55),
   tree: new THREE.Vector3(-1.6, 0, -1.9),
-  lamp: new THREE.Vector3(-1.8, 1.0, -1.5),
+  lamp: new THREE.Vector3(-2.55, 1.5, -0.19),   // 스탠드 전등 갓 (왼쪽 벽 앞)
+  window: { x0: 1.17, x1: 2.43, y0: 0.38, y1: 2.82, z: -2.8 }, // 뒷벽 오른쪽 큰 창
 };
 
 export async function modelAvailable() {
@@ -60,7 +61,7 @@ export function buildRoomView(container, { low, onReady }) {
   const moon = new THREE.DirectionalLight('#7f9cff', 0.22); moon.position.set(4, 5, -6); scene.add(moon);
   const fire = new THREE.PointLight('#ff7a2c', 5, 0, 2); fire.position.copy(SPOT.fire).add(new THREE.Vector3(0, 0.1, 0.45)); scene.add(fire);
   const treeL = new THREE.PointLight('#ffc477', 1.7, 0, 2); treeL.position.copy(SPOT.tree).add(new THREE.Vector3(0.55, 1.5, 1.25)); scene.add(treeL);
-  const lamp = new THREE.PointLight('#ffd59a', 1.6, 0, 2); lamp.position.copy(SPOT.lamp).add(new THREE.Vector3(0, 0.45, 0)); scene.add(lamp);
+  const lamp = new THREE.PointLight('#ffc98a', 2.6, 0, 2); lamp.position.copy(SPOT.lamp).add(new THREE.Vector3(0.12, -0.02, 0)); scene.add(lamp);
 
   // ── 창밖 밤 풍경 + 눈 ──
   const nt = nightTex();
@@ -68,20 +69,38 @@ export function buildRoomView(container, { low, onReady }) {
   back.position.set(0, 1.6, -4.2); scene.add(back);
   const side = new THREE.Mesh(new THREE.PlaneGeometry(14, 7), new THREE.MeshBasicMaterial({ map: nt, fog: false }));
   side.rotation.y = -Math.PI / 2; side.position.set(4.2, 1.6, 0); scene.add(side);
-  const snowN = low ? 260 : 520; const sp = new Float32Array(snowN * 3); const sd = new Float32Array(snowN); const r = rng(5);
+  const snowN = low ? 420 : 900; const sp = new Float32Array(snowN * 3); const sd = new Float32Array(snowN); const r = rng(5);
   for (let i = 0; i < snowN; i++) {
     if (i % 2) sp.set([-3 + r() * 6.5, r() * 3.6, -2.95 - r() * 1.1], i * 3); else sp.set([2.95 + r() * 1.1, r() * 3.6, -3 + r() * 6.5], i * 3);
     sd[i] = r();
   }
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
-  const snow = new THREE.Points(sg, new THREE.PointsMaterial({ size: 0.035, map: glowTexture(), color: '#e8f0ff', transparent: true, depthWrite: false }));
+  const snow = new THREE.Points(sg, new THREE.PointsMaterial({ size: 0.055, map: glowTexture(), color: '#f2f6ff', transparent: true, depthWrite: false }));
   snow.frustumCulled = false; scene.add(snow);
   let st = 0;
   updaters.push((dt) => {
     st += dt;
-    for (let i = 0; i < snowN; i++) { const k = i * 3; sp[k + 1] -= (0.25 + sd[i] * 0.35) * dt; sp[k + (i % 2 ? 0 : 2)] += Math.sin(st * 0.6 + sd[i] * 40) * 0.08 * dt; if (sp[k + 1] < 0) sp[k + 1] += 3.6; }
+    for (let i = 0; i < snowN; i++) { const k = i * 3; sp[k + 1] -= (0.35 + sd[i] * 0.45) * dt; sp[k + (i % 2 ? 0 : 2)] += (Math.sin(st * 0.7 + sd[i] * 40) * 0.18 + 0.06) * dt; if (sp[k + 1] < 0) sp[k + 1] += 3.6; }
     sg.attributes.position.needsUpdate = true;
   });
+
+  // ── 창틀: 모델의 창은 뚫린 구멍뿐이라 흰 나무 창틀·창살·창턱·유리를 덧붙임 ──
+  {
+    const W = SPOT.window; const fm = new THREE.MeshStandardMaterial({ color: '#efe8dc', roughness: 0.6 });
+    const g = new THREE.Group(); scene.add(g);
+    const bx = (w, h, d, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), fm); m.position.set(x, y, z); g.add(m); };
+    const cx = (W.x0 + W.x1) / 2, cy = (W.y0 + W.y1) / 2, w = W.x1 - W.x0, h = W.y1 - W.y0, t = 0.09, z = W.z;
+    bx(w + t * 2, t, 0.18, cx, W.y1 + t / 2, z); bx(w + t * 2, t, 0.18, cx, W.y0 - t / 2, z);        // 위·아래 틀
+    bx(t, h, 0.18, W.x0 - t / 2, cy, z); bx(t, h, 0.18, W.x1 + t / 2, cy, z);                        // 좌·우 틀
+    bx(0.06, h, 0.08, cx, cy, z);                                                                     // 가운데 세로 창살
+    [W.y0 + h * 0.36, W.y0 + h * 0.68].forEach((yy) => bx(w, 0.045, 0.06, cx, yy, z));               // 가로 창살
+    bx(w + 0.36, 0.05, 0.3, cx, W.y0 - t - 0.02, z + 0.12);                                          // 실내 창턱
+    // 유리: 아주 옅은 반사감 (눈 풍경은 그대로 보이게)
+    const glass = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ color: '#9fb4e0', roughness: 0.05, metalness: 0.0, transparent: true, opacity: 0.08, depthWrite: false }));
+    glass.position.set(cx, cy, z - 0.01); g.add(glass);
+    // 창 안쪽 아래에 눈이 살짝 쌓인 창턱(바깥)
+    const sill = new THREE.Mesh(new THREE.BoxGeometry(w, 0.06, 0.25), new THREE.MeshBasicMaterial({ color: '#c9d6ee' })); sill.position.set(cx, W.y0 + 0.03, z - 0.16); g.add(sill);
+  }
 
   // ── 후처리: 밝은 부분(불꽃·전구)만 은은하게 번지게 ──
   const composer = new EffectComposer(renderer);
@@ -117,6 +136,9 @@ export function buildRoomView(container, { low, onReady }) {
         if (name === '_2') { const base = o.scale.clone(); updaters.push((dt, t) => { const k = 1 + Math.sin(t * 9) * 0.05 + Math.sin(t * 23) * 0.03; o.scale.set(base.x, base.y * k, base.z); }); }
       }
       if (name === 'Color_A02' || name === '_Color_A03_10') { o.material = m.clone(); o.material.color.multiplyScalar(0.35); }
+      if (name === '_Color_A03_28') { // 스탠드 전등 갓: 안에서 불이 켜진 것처럼
+        o.material = new THREE.MeshStandardMaterial({ map: m.map || null, color: '#fff1d6', emissive: '#ffbf73', emissiveIntensity: 0.55, roughness: 0.9, side: THREE.DoubleSide });
+      }
       if (name === '_Color_A03_') o.visible = false; // 트리 옆 사각 빛 평면은 어색해서 숨김
       if (name === '__') { o.material = new THREE.MeshBasicMaterial({ map: m.map, transparent: true, depthWrite: false, opacity: 0.35, side: THREE.DoubleSide }); }
       // 벽 위쪽 가랜드 줄(_Color_A03_38) → 작은 전구
@@ -169,12 +191,15 @@ export function buildRoomView(container, { low, onReady }) {
     });
     // 은은한 후광: 벽난로, 트리 꼭대기, 스탠드
     const fg = glow('#ff8a3a', 1.3, 0.35); fg.position.copy(SPOT.fire).add(new THREE.Vector3(0, 0.05, 0.25)); scene.add(fg);
+    const lg2 = glow('#ffc070', 0.6, 0.2); lg2.position.copy(SPOT.lamp); scene.add(lg2);
+    const lgd = glow('#ffb860', 0.6, 0.12); lgd.position.copy(SPOT.lamp).add(new THREE.Vector3(0.05, -0.35, 0)); scene.add(lgd);
     const tg = glow('#ffcf7a', 0.7, 0.4); tg.position.set(SPOT.tree.x, 2.5, SPOT.tree.z); scene.add(tg);
     updaters.push((dt, t) => {
       fire.intensity = 4.8 + Math.sin(t * 11) * 0.8 + Math.sin(t * 27) * 0.5;
       fg.material.opacity = 0.32 + Math.sin(t * 9) * 0.06;
     });
     console.info('[room] tree/mantel/swag verts', treeVerts.length, mantelVerts.length, swagVerts.length);
+    if (new URLSearchParams(location.search).has('debug')) window.__room = { scene, camera, root, THREE };
     onReady?.();
   }, undefined, (e) => console.error('[room] 모델 로드 실패', e));
 
@@ -182,6 +207,8 @@ export function buildRoomView(container, { low, onReady }) {
   const view = { pos: new THREE.Vector3(1.75, 1.5, 2.2), yaw: Math.atan2(1.75 + 0.6, 2.2 + 2.2), pitch: -0.08 };
   const q = new URLSearchParams(location.search);
   if (q.get('cam') === 'tree') Object.assign(view, { pos: new THREE.Vector3(-0.6, 1.35, 0.3), yaw: Math.atan2(-0.6 + 1.6, 0.3 + 1.9), pitch: 0.02 });
+  if (q.get('cam') === 'window') Object.assign(view, { pos: new THREE.Vector3(0.5, 1.5, 0.8), yaw: Math.atan2(0.5 - 1.8, 0.8 + 2.8), pitch: 0.0 });
+  if (q.get('cam') === 'lamp') Object.assign(view, { pos: new THREE.Vector3(0.3, 1.45, 1.2), yaw: Math.atan2(0.3 + 2.5, 1.2 + 0.2), pitch: -0.05 });
   if (q.get('cam') === 'fire') Object.assign(view, { pos: new THREE.Vector3(0.4, 1.3, 0.6), yaw: Math.atan2(0.4, 0.6 + 2.5), pitch: -0.12 });
   let drag = null;
   renderer.domElement.addEventListener('pointerdown', (e) => { drag = [e.clientX, e.clientY]; });
