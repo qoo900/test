@@ -56,7 +56,7 @@ export function setupEntry({ owner, defaultName, onEnter }) {
 
 export function setHud({ title, owner, count, sealed, sealUntil, mode }) {
   if (title) { $('#hud-title').textContent = title; document.title = title; }
-  if (owner !== undefined) $('#hud-meta').textContent = `${owner}님의 트리 · 💌 ${count}개${mode === 'local' ? ' · 로컬 모드' : ''}`;
+  if (owner !== undefined) $('#hud-meta').textContent = `${owner}님의 트리 · 🎁 선물 ${count}개${mode === 'local' ? ' · 로컬 모드' : ''}`;
   const s = $('#hud-seal');
   if (sealed !== undefined) { s.hidden = !sealed; if (sealed) s.textContent = `🔒 ${formatDate(sealUntil)}에 열려요`; }
 }
@@ -86,7 +86,7 @@ export function setupCompose({ getDefaults, onSubmit }) {
   return {
     open() {
       const d = getDefaults();
-      $('#compose-title').textContent = `${d.owner}님에게 메시지 걸기`;
+      $('#compose-title').textContent = `${d.owner}님 트리 아래 선물 놓기`;
       if (!author.value) author.value = d.name || '';
       const note = $('#c-seal-note'); note.hidden = !d.sealed;
       if (d.sealed) note.textContent = `🔒 메시지는 ${formatDate(d.sealUntil)}에 열려요.`;

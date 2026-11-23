@@ -62,58 +62,26 @@ export function buildOutside(scene, { low }) {
     spots.push([x, z, 0.7 + r() * 0.9, r() * 6]);
   }
   [[-1.2, -6.5, 1.1], [8.6, -8, 1.3], [-2.4, -10, 1.2], [9.5, -12, 1.0], [3.2, -21, 1.2], [5.4, -23, 1.4]].forEach(([x, z, s]) => spots.push([x, z, s, r() * 6])); // 창 양옆을 감싸는 나무
-  // 소나무: 가지·솔잎·쌓인 눈을 붓질하듯 그린 그림(3종)을 60°씩 엇갈린 판 3장에 붙임 → 세모 조합 대신 실제 나무 같은 실루엣
-  function paintPine(seed) {
-    const W = 256, H = 512, c = document.createElement('canvas'); c.width = W; c.height = H; const ctx = c.getContext('2d');
-    const pr = rng(seed); const cx = W / 2, top = 18, bottom = H * 0.86, maxW = W * 0.47;
-    const greens = ['#173b23', '#1d4a2b', '#245a33', '#2c6a3c', '#357846'];
-    // 줄기
-    ctx.fillStyle = '#4a3324'; ctx.fillRect(cx - 5, H * 0.7, 10, H * 0.3);
-    // 속이 비어 보이지 않게 짙은 몸통 실루엣
-    ctx.fillStyle = '#163620'; ctx.beginPath(); ctx.moveTo(cx, top);
-    for (let y = top; y <= bottom; y += 8) { const t = (y - top) / (bottom - top); ctx.lineTo(cx + maxW * 0.62 * Math.pow(t, 0.95) * (0.9 + pr() * 0.2), y); }
-    for (let y = bottom; y >= top; y -= 8) { const t = (y - top) / (bottom - top); ctx.lineTo(cx - maxW * 0.62 * Math.pow(t, 0.95) * (0.9 + pr() * 0.2), y); }
-    ctx.fill();
-    // 가지: 위에서 아래로 층층이, 끝이 처지는 곡선을 따라 솔잎 붓질
-    const N = 30;
-    for (let i = 0; i <= N; i++) {
-      const t = i / N; const y = top + Math.pow(t, 1.05) * (bottom - top);
-      const hw = maxW * (0.08 + 0.92 * Math.pow(t, 0.9)) * (0.85 + pr() * 0.3);
-      for (const side of [-1, 1]) {
-        const ex = cx + side * hw, ey = y + hw * (0.22 + pr() * 0.12), mx = cx + side * hw * 0.55, my = y - hw * 0.05;
-        const steps = 10 + Math.floor(hw / 5);
-        for (let k = 0; k <= steps; k++) {
-          const u = k / steps; const px = (1 - u) * (1 - u) * cx + 2 * (1 - u) * u * mx + u * u * ex, py = (1 - u) * (1 - u) * y + 2 * (1 - u) * u * my + u * u * ey;
-          const len = 5 + (1 - u) * 6 + pr() * 4; const thick = 2 + (1 - u) * 6;
-          for (let n = 0; n < 4; n++) {
-            ctx.strokeStyle = greens[Math.floor(pr() * greens.length)]; ctx.lineWidth = 1.4 + pr() * 1.2; ctx.globalAlpha = 0.85;
-            const a = (side > 0 ? 0.35 : Math.PI - 0.35) + (pr() - 0.5) * 1.3 + (n % 2 ? 0.9 : -0.9) * side;
-            ctx.beginPath(); ctx.moveTo(px, py + (pr() - 0.5) * thick); ctx.lineTo(px + Math.cos(a) * len, py + Math.sin(a) * len + 3); ctx.stroke();
-          }
-          // 가지 윗면에 쌓인 눈
-          if (u > 0.15 && pr() < 0.55) { ctx.globalAlpha = 0.92; ctx.fillStyle = pr() < 0.7 ? '#f4f8ff' : '#dfe7f5'; ctx.beginPath(); ctx.ellipse(px + (pr() - 0.5) * 4, py - thick * 0.5 - 1, 3 + pr() * 4 * (1 - u * 0.4), 1.6 + pr() * 1.6, (side * 0.3), 0, 7); ctx.fill(); }
-        }
-      }
-    }
-    ctx.globalAlpha = 1;
-    // 왼쪽은 그늘, 오른쪽은 빛을 받는 느낌
-    ctx.globalCompositeOperation = 'source-atop';
-    const g = ctx.createLinearGradient(0, 0, W, 0); g.addColorStop(0, 'rgba(0,10,0,.28)'); g.addColorStop(0.55, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(255,255,240,.10)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+  // 소나무: 매끈한 곡선 단 3개(살짝 오목한 실루엣) + 꼭대기에만 눈. 디테일을 줄여 차분하게
+  function tier(r0, h, y0) {
+    const pts = []; for (let i = 0; i <= 8; i++) { const t = i / 8; pts.push(new THREE.Vector2(r0 * (1 - t) * (1 - 0.18 * Math.sin(t * Math.PI)), y0 + h * t)); }
+    pts.unshift(new THREE.Vector2(0, y0)); return new THREE.LatheGeometry(pts, 16);
   }
-  const crossGeo = (() => { const ps = [0, 1, 2].map((k) => new THREE.PlaneGeometry(2.9, 5.8).translate(0, 2.9, 0).rotateY((k * Math.PI) / 3)); return mergeGeometries(ps); })();
-  const treeMats = [11, 23, 37].map((sd) => new THREE.MeshBasicMaterial({ map: paintPine(sd), alphaTest: 0.45, side: THREE.DoubleSide, transparent: false }));
+  const foliageGeo = mergeGeometries([tier(1.3, 1.9, 0.7), tier(1.0, 1.6, 1.75), tier(0.7, 1.4, 2.7)]);
+  const snowGeo = (() => { const g = tier(0.42, 0.62, 3.48); return g; })();
+  const trunkGeo = new THREE.CylinderGeometry(0.1, 0.15, 0.9, 8).translate(0, 0.45, 0);
+  const treeParts = [[trunkGeo, L('#4a3627')], [foliageGeo, L('#2f5e3f')], [snowGeo, L('#f3f6fc')]];
+  const treeMats = [treeParts[1][1]];
+  const calm = spots.filter((_, i) => i % 2 === 0); // 절반만 → 듬성듬성
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(); const tint = new THREE.Color();
-  treeMats.forEach((mat, v) => {
-    const mine = spots.filter((_, i) => i % 3 === v);
-    const im = new THREE.InstancedMesh(crossGeo, mat, mine.length);
-    mine.forEach(([x, z, s, ry], i) => {
-      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), ry); sc.set(s * (0.9 + (i % 4) * 0.06), s * (0.95 + (i % 3) * 0.06), s); m4.compose(new THREE.Vector3(x, 0, z), q, sc); im.setMatrixAt(i, m4);
-      tint.setHSL(0.33, 0.12, 0.88 + ((i * 53) % 10) / 80); im.setColorAt(i, tint); // 나무마다 밝기·톤을 살짝 다르게
+  for (const [geo, mat] of treeParts) {
+    const im = new THREE.InstancedMesh(geo, mat, calm.length);
+    calm.forEach(([x, z, s, ry], i) => {
+      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), ry); sc.set(s, s * (0.95 + (i % 4) * 0.05), s); m4.compose(new THREE.Vector3(x, 0, z), q, sc); im.setMatrixAt(i, m4);
+      if (geo === foliageGeo) { tint.setHSL(0.36, 0.3, 0.9 + ((i * 53) % 10) / 70); im.setColorAt(i, tint); }
     });
     root.add(im);
-  });
+  }
 
   // ── 이웃 오두막: 불 켜진 창 + 굴뚝 연기 ──
   const cabin = new THREE.Group(); cabin.position.set(10.5, 0, -30); cabin.rotation.y = -0.6; cabin.scale.setScalar(0.9); root.add(cabin);
@@ -164,7 +132,7 @@ export function buildOutside(scene, { low }) {
     ground.material.color.set(day ? '#f4f7fc' : '#e9eef8'); ground.material.emissive.set(day ? '#000000' : '#1d2b4d');
     winMat.color.set(day ? '#9a7a55' : '#ffbe6a'); cabGlow.visible = !day; postGlow.visible = !day; pool.visible = !day;
     snow.material.color.set(day ? '#ffffff' : '#f4f7ff');
-    treeMats.forEach((m) => m.color.set(day ? '#ffffff' : '#56688c'));
+    treeMats.forEach((m) => m.color.set(day ? '#2f5e3f' : '#1d3346'));
   }
   setTime(false);
   return { root, snow, update: (dt) => updaters.forEach((u) => u(dt)), setTime };

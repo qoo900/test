@@ -209,3 +209,7 @@ body.room-mode .walk-hint { display: block; }
 body.day .room-grade { background: radial-gradient(ellipse 85% 80% at 50% 50%, rgba(0,0,0,0) 60%, rgba(30, 20, 10, .28) 100%); }
 #btn-time { display: none; }
 body.room-mode #btn-time { display: inline-grid; }
+
+/* 트리 근처에서 나타나는 메시지 읽기 버튼 */
+.btn-read { pointer-events: auto; padding: 12px 24px; font-size: 15.5px; border-radius: 999px; background: rgba(247, 240, 228, .92); color: #5c1118; font-weight: 700; border: 1px solid rgba(217, 181, 106, .7); box-shadow: 0 0 24px rgba(255, 200, 120, .45); animation: readIn .5s ease; }
+@keyframes readIn { from { opacity: 0; transform: translateY(10px) scale(.95); } }

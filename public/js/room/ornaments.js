@@ -59,8 +59,8 @@ export class RoomOrnaments {
     return [...ground, ...stacked];
   }
 
-  makeGift(item) {
-    const h = hashStr(item.id); const pr = rng(h); const big = ITEM_TYPES[item.type].kind === 'gift';
+  makeGift(idx) {
+    const h = hashStr('gift' + idx); const pr = rng(h); const big = idx % 4 === 0;
     const pal = [['#b3202f', '#f0cf78'], ['#2a7048', '#f6efe0'], ['#f4ecdc', '#b51d2c'], ['#d4ab55', '#9b1626'], ['#c8323c', '#f6efe0'], ['#f3e6c8', '#2a7048'], ['#3a5e9a', '#f0cf78'], ['#8e2440', '#f2d590']];
     const [c1, c2] = pal[h % pal.length];
     const w = (big ? 0.27 : 0.16) + pr() * 0.1, hh = (big ? 0.22 : 0.12) + pr() * 0.1, d = w * (0.75 + pr() * 0.4);
@@ -81,37 +81,33 @@ export class RoomOrnaments {
     vis.forEach((it, gi) => {
       keep.add(it.id);
       // 트리 장식 (선물 상자 종류는 트리에 걸지 않고 선물 더미에만)
-      if (ITEM_TYPES[it.type].kind !== 'gift') {
+      {
         const slotKey = `t${ti}`; const pos = this.slots[ti++ % this.slots.length];
         const e = this.entries.get(it.id);
         if (!(e && e.slotKey === slotKey)) { if (e) this.remove(it.id); this.add(it, pos, slotKey, false); } else e.item = it;
-      } else if (this.entries.has(it.id)) this.remove(it.id);
-      // 선물 더미: 메시지 하나에 선물 하나
-      const g = this.gifts.get(it.id);
-      if (!g || g.slot !== gi) { if (g) this.removeGift(it.id); this.addGift(it, gi); }
+      }
     });
     for (const id of [...this.entries.keys()]) if (!keep.has(id)) this.remove(id);
-    for (const id of [...this.gifts.keys()]) if (!keep.has(id)) this.removeGift(id);
+    // 선물 더미: 메시지 양을 가늠하는 용도. 처음 10개까지는 1:1, 이후 3개당 1개, 최대 28개
+    const n = vis.length; const want = Math.min(28, n <= 10 ? n : 10 + Math.floor((n - 10) / 3));
+    for (let i = 0; i < want; i++) if (!this.gifts.has(i)) this.addGift(i);
+    for (const k of [...this.gifts.keys()]) if (k >= want) this.removeGift(k);
     this.ready = true;
   }
 
-  addGift(item, gi) {
-    const s = this.giftSlots[gi % this.giftSlots.length]; const lap = Math.floor(gi / this.giftSlots.length);
-    const mesh = this.makeGift(item);
-    const y = s.y + lap * 0.25;
-    mesh.position.set(s.x, y, s.z); this.root.add(mesh);
-    const hit = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), new THREE.MeshBasicMaterial({ visible: false }));
-    hit.position.set(0, mesh.userData.h / 2, 0); hit.userData.itemId = item.id; mesh.add(hit); this.hits.push(hit);
-    const drop = this.ready ? { t: 0, from: y + 1.4, to: y } : null; if (drop) mesh.position.y = drop.from;
-    this.gifts.set(item.id, { mesh, hit, slot: gi, drop, item });
+  addGift(gi) {
+    const sl = this.giftSlots[gi % this.giftSlots.length];
+    const mesh = this.makeGift(gi); mesh.position.set(sl.x, sl.y, sl.z); this.root.add(mesh);
+    const drop = this.ready ? { t: 0, from: sl.y + 1.0, to: sl.y } : null; if (drop) mesh.position.y = drop.from;
+    this.gifts.set(gi, { mesh, drop });
   }
-  removeGift(id) { const g = this.gifts.get(id); if (!g) return; this.root.remove(g.mesh); this.hits = this.hits.filter((h) => h !== g.hit); this.gifts.delete(id); }
+  removeGift(k) { const g = this.gifts.get(k); if (!g) return; this.root.remove(g.mesh); this.gifts.delete(k); }
 
   add(item, pos, slotKey, base) {
     const pivot = new THREE.Group(); pivot.position.copy(pos);
     const out = new THREE.Vector3(pos.x - this.center.x, 0, pos.z - this.center.z).normalize();
     pivot.rotation.y = Math.atan2(out.x, out.z);
-    const body = buildMesh(item); body.scale.setScalar(base ? 0.75 : 0.62);
+    const body = buildMesh(item); body.scale.setScalar(ITEM_TYPES[item.type].kind === 'gift' ? 0.38 : 0.62);
     body.traverse((o) => { if (o.isMesh && o.material?.isMeshLambertMaterial) { o.material = o.material.clone(); o.material.emissiveIntensity = (o.material.emissiveIntensity || 0) + 0.15; } });
     if (!base) { body.position.y = -0.07; const str = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.002, 0.08), new THREE.MeshBasicMaterial({ color: '#d9b56a' })); str.position.y = 0; pivot.add(str); }
     pivot.add(body);
@@ -122,7 +118,7 @@ export class RoomOrnaments {
   }
 
   remove(id) { const e = this.entries.get(id); if (!e) return; this.root.remove(e.pivot); this.hits = this.hits.filter((h) => h !== e.hit); this.entries.delete(id); }
-  worldPos(id) { const e = this.entries.get(id) || this.gifts.get(id); return e ? e.hit.getWorldPosition(new THREE.Vector3()) : null; }
+  worldPos(id) { const e = this.entries.get(id); return e ? e.hit.getWorldPosition(new THREE.Vector3()) : null; }
   outward(id) { const p = this.worldPos(id); return p ? new THREE.Vector3(p.x - this.center.x, 0, p.z - this.center.z) : new THREE.Vector3(0, 0, 1); }
   highlight(id) { this.hl = id; this.hlT = 0; }
   clear() { this.hl = null; }
@@ -138,12 +134,12 @@ export class RoomOrnaments {
       if (t >= 1) { g.mesh.position.y = g.drop.to; g.drop = null; }
     }
     const e = this.hl && this.entries.get(this.hl);
-    const ge = this.hl && !e && this.gifts.get(this.hl);
+    const ge = null;
     if (ge) { this.hlT += dt; this.halo.position.copy(this.worldPos(this.hl)); this.halo.material.opacity = 0.55 + Math.sin(this.hlT * 4) * 0.2; }
     if (e) {
       this.hlT += dt; this.halo.position.copy(this.worldPos(this.hl));
       this.halo.material.opacity = 0.55 + Math.sin(this.hlT * 4) * 0.2;
-      e.body.scale.setScalar((e.base ? 0.75 : 0.62) * (1 + Math.max(0, Math.sin(this.hlT * 5)) * 0.25 * Math.max(0, 1 - this.hlT / 2.5)));
+      e.body.scale.setScalar((ITEM_TYPES[e.item.type].kind === 'gift' ? 0.38 : 0.62) * (1 + Math.max(0, Math.sin(this.hlT * 5)) * 0.25 * Math.max(0, 1 - this.hlT / 2.5)));
     } else if (!ge) this.halo.material.opacity = Math.max(0, this.halo.material.opacity - dt * 2);
   }
 }

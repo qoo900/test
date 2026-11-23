@@ -11,7 +11,7 @@ import { setupAdmin } from './ui/admin.js';
 
 const low = CONFIG.isTouch || (navigator.deviceMemory && navigator.deviceMemory < 4);
 if (CONFIG.isTouch) document.body.classList.add('touch');
-let view = null;
+let view = null; let nearTree = false;
 let api; let state = { items: [], settings: {}, sealed: false }; const me = { name: '' }; let entered = false;
 const owner = () => state.settings.owner || '친구';
 const visibleItems = () => state.items.filter((it) => it.status === 'visible');
@@ -50,11 +50,13 @@ const compose = setupCompose({
     sound.sparkle();
     setTimeout(() => view.highlight(item.id), 100);
     setTimeout(() => { if (!anyModalOpen()) view.unfocus(); }, 3500);
-    toast(`${ITEM_TYPES[item.type].icon} 트리에 걸었어요!`);
+    toast('🎁 트리 아래에 선물을 놓았어요!');
   },
 });
 const list = setupList({ getItems: visibleItems, onPick: (it) => { closeModal('list-modal'); openItem(it.id); } });
 $('#btn-compose').addEventListener('click', () => compose.open());
+// 트리 근처에서: 최근 메시지부터 카드로 (이전/다음으로 넘기기)
+$('#btn-read').addEventListener('click', () => { const l = visibleItems().sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)); if (l.length) openItem(l[0].id); else toast('아직 놓인 선물이 없어요'); });
 $('#btn-list').addEventListener('click', () => list.open());
 const soundBtn = $('#btn-sound');
 const syncSound = () => { soundBtn.textContent = sound.muted ? '🔇' : '🔊'; };
@@ -81,7 +83,7 @@ addEventListener('keydown', (e) => {
   if (hasModel && (!forced || forced === 'room')) {
     document.body.classList.add('room-mode');
     const { buildRoomView } = await import('./room/roomView.js');
-    view = buildRoomView(app, { low, onPick: openItem, canInteract: () => entered && !anyModalOpen() });
+    view = buildRoomView(app, { low, onPick: openItem, onNear: (n) => { nearTree = n; $('#btn-read').hidden = !(n && entered); }, canInteract: () => entered && !anyModalOpen() });
     // 낮·밤 선택: ?time=day|night > 저장된 선택 > 기본 밤
     let saved = null; try { saved = localStorage.getItem('tree-time'); } catch { /* ignore */ }
     const initial = new URLSearchParams(location.search).get('time') || saved || 'night';
@@ -109,6 +111,7 @@ addEventListener('keydown', (e) => {
     onEnter: ({ name }) => {
       me.name = name; entered = true; sound.init();
       document.body.classList.add('entered');
+      $('#btn-read').hidden = !nearTree;
       if (musicPref) setTimeout(() => sound.startMusic(), 1500);
       $('#hud').hidden = false;
       setTimeout(() => { $('#hint').classList.add('gone'); $('#walk-hint').classList.add('gone'); }, 8000);

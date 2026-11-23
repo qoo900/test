@@ -59,7 +59,7 @@ const dayTex = () => canvasTex(1024, 512, (ctx, w, h) => {
   ridge(h * 0.78, 10, '#eef3fb'); ridge(h * 0.86, 6, '#ffffff');
 });
 
-export function buildRoomView(container, { low, onReady, onPick, canInteract = () => true }) {
+export function buildRoomView(container, { low, onReady, onPick, onNear, canInteract = () => true }) {
   const renderer = new THREE.WebGLRenderer({ antialias: !low, powerPreference: low ? 'default' : 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, low ? 1.25 : 1.75));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -283,6 +283,9 @@ export function buildRoomView(container, { low, onReady, onPick, canInteract = (
     },
   });
   updaters.push((dt) => walker.update(dt));
+  // 트리 가까이(약 2m) 오면 '받은 메시지 읽기' 버튼 표시
+  let near = null;
+  updaters.push(() => { const d = Math.hypot(walker.pos.x - SPOT.tree.x, walker.pos.z - SPOT.tree.z); const n = d < 2.6 && !walker.focus; if (n !== near) { near = n; onNear?.(n); } });
   const q = new URLSearchParams(location.search);
   const presets = { tree: [-0.55, 0.15, 0.47, 0.05], window: [0.5, 0.8, -0.35, 0.0], lamp: [0.3, 1.2, 1.1, -0.05], fire: [0.4, 0.6, 0.12, -0.12] };
   if (presets[q.get('cam')]) { const [x, z, yaw, pitch] = presets[q.get('cam')]; walker.pos.set(x, 1.5, z); walker.yaw = yaw; walker.pitch = pitch; }

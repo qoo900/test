@@ -19,7 +19,7 @@
     <div class="entry-card">
       <p class="eyebrow">MERRY CHRISTMAS</p>
       <h1 id="entry-title">하늘님의 오두막</h1>
-      <p class="sub">벽난로 옆 트리에 따뜻한 한마디를 걸어 주세요</p>
+      <p class="sub">크리스마스 트리 아래에 마음을 담은 선물을 놓고 가세요</p>
       <label class="field-label" for="entry-name">내 이름 <span class="muted">(비워 두면 익명)</span></label>
       <input id="entry-name" type="text" maxlength="20" placeholder="예) 홍길동" autocomplete="nickname" />
       <button id="enter-btn" class="btn btn-primary btn-lg">들어가기</button>
@@ -44,9 +44,10 @@
       </div>
     </div>
     <div class="hud-bottom">
-      <p class="hint" id="hint">장식을 눌러 메시지를 읽어 보세요</p>
+      <p class="hint" id="hint">트리 가까이 가면 받은 메시지를 읽을 수 있어요</p>
       <p class="hint walk-hint" id="walk-hint">WASD·방향키로 걷고, 드래그로 둘러보세요</p>
-      <button id="btn-compose" class="btn btn-primary btn-compose">✍️ 트리에 메시지 걸기</button>
+      <button id="btn-read" class="btn btn-read" hidden>💌 받은 메시지 읽기</button>
+      <button id="btn-compose" class="btn btn-primary btn-compose">🎁 트리 아래 선물 놓기</button>
     </div>
   </div>
 
@@ -56,18 +57,18 @@
   <!-- 작성 -->
   <div class="modal" id="compose-modal" hidden>
     <form class="sheet" id="compose-form" autocomplete="off">
-      <header class="sheet-head"><h2 id="compose-title">메시지 걸기</h2><button type="button" class="icon-btn close" data-close aria-label="닫기">✕</button></header>
-      <label class="field-label">장식 고르기</label>
+      <header class="sheet-head"><h2 id="compose-title">선물 놓기</h2><button type="button" class="icon-btn close" data-close aria-label="닫기">✕</button></header>
+      <label class="field-label">트리에 함께 걸 장식</label>
       <div class="type-grid" id="type-grid"></div>
       <label class="field-label" for="c-message">메시지 <span class="muted" id="c-count">0/140</span></label>
-      <textarea id="c-message" rows="4" maxlength="140" placeholder="올해 고마웠던 마음을 적어 주세요" required></textarea>
+      <textarea id="c-message" rows="4" maxlength="140" placeholder="선물 상자에 담을 마음을 적어 주세요" required></textarea>
       <div class="row">
         <div class="grow"><label class="field-label" for="c-author">보내는 사람</label><input id="c-author" type="text" maxlength="20" placeholder="이름" /></div>
         <label class="check"><input type="checkbox" id="c-anon" /> 익명</label>
       </div>
       <p class="muted small" id="c-seal-note" hidden></p>
       <p class="form-error" id="c-error" hidden></p>
-      <button type="submit" class="btn btn-primary btn-lg" id="c-submit">트리에 걸기</button>
+      <button type="submit" class="btn btn-primary btn-lg" id="c-submit">🎁 트리 아래에 놓기</button>
     </form>
   </div>
 
