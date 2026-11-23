@@ -59,11 +59,11 @@ const dayTex = () => canvasTex(1024, 512, (ctx, w, h) => {
   ridge(h * 0.78, 10, '#eef3fb'); ridge(h * 0.86, 6, '#ffffff');
 });
 
-// 앞쪽 벽 가운데 현관문: 짙은 초록 패널 문, 흰 문틀, 놋쇠 손잡이, 문 화환, 현관 매트
+// 앞쪽 벽 가운데 현관문: 벽난로 몰딩과 같은 흰색 패널 문·문틀, 놋쇠 손잡이, 벽 촛대, 현관 매트
 function buildFrontDoor(scene) {
   const g = new THREE.Group(); g.position.set(0.15, 0, 2.8); g.rotation.y = Math.PI; scene.add(g); // 문 앞면이 방 안(-z)을 향함
   const S = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, ...o });
-  const W = 1.0, H = 2.15, frame = S('#f1ebdf'), door = S('#2b4a36', { roughness: 0.5 }), panel = S('#24402f', { roughness: 0.5 }), brass = S('#c8a050', { metalness: 0.8, roughness: 0.3 });
+  const W = 1.0, H = 2.15, frame = S('#f1ebdf'), door = S('#f3ede2', { roughness: 0.55 }), panel = S('#e6ddcd', { roughness: 0.55 }), brass = S('#c8a050', { metalness: 0.8, roughness: 0.3 });
   const box = (w, h, d, m, x, y, z) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); g.add(b); return b; };
   // 문 뒤 어두운 틈(벽 몰딩 가림) + 문틀
   box(W + 0.02, H + 0.02, 0.03, S('#1a120c'), 0, H / 2, 0.035);
@@ -75,11 +75,6 @@ function buildFrontDoor(scene) {
   // 손잡이 + 열쇠구멍판
   const knob = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 10), brass); knob.position.set(0.38, 1.0, 0.13); g.add(knob);
   box(0.05, 0.14, 0.01, brass, 0.38, 0.97, 0.104);
-  // 문 화환
-  const wreath = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.065, 8, 24), S('#2f6b42', { roughness: 0.8 })); wreath.position.set(0, 1.6, 0.16); g.add(wreath);
-  const red = S('#b3202a');
-  for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2; const b = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), red); b.position.set(Math.cos(a) * 0.2, 1.6 + Math.sin(a) * 0.2, 0.21); g.add(b); }
-  const bow = box(0.14, 0.07, 0.03, red, 0, 1.39, 0.2); bow.rotation.z = 0.05;
   // 문 양옆 벽 촛대(밤에 문 쪽이 너무 어둡지 않게 은은한 빛 하나)
   [-1, 1].forEach((sd) => {
     const x = sd * (W / 2 + 0.38);
@@ -88,13 +83,13 @@ function buildFrontDoor(scene) {
     const f = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: '#ffc46a', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.85 }));
     f.scale.set(0.16, 0.22, 1); f.position.set(x, 1.75, 0.16); g.add(f);
   });
-  const doorLight = new THREE.PointLight('#ffbf70', 1.1, 0, 2); doorLight.position.set(0, 1.9, 0.6); g.add(doorLight);
+  const doorLight = new THREE.PointLight('#ffbf70', 0.4, 0, 2); doorLight.position.set(0, 2.2, 1.1); g.add(doorLight);
   // 현관 매트
   const mat = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.015, 0.55), S('#6b3a2a', { roughness: 0.95 })); mat.position.set(0, 0.008, 0.42); g.add(mat);
   const mat2 = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.017, 0.4), S('#8a5a3a', { roughness: 0.95 })); mat2.position.set(0, 0.009, 0.42); g.add(mat2);
 }
 
-export function buildRoomView(container, { low, onReady, onPick, onNear, canInteract = () => true }) {
+export function buildRoomView(container, { low, onReady, onPick, onNear, onNearDoor, canInteract = () => true }) {
   const renderer = new THREE.WebGLRenderer({ antialias: !low, powerPreference: low ? 'default' : 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, low ? 1.25 : 1.75));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -339,11 +334,14 @@ export function buildRoomView(container, { low, onReady, onPick, onNear, canInte
     },
   });
   updaters.push((dt) => walker.update(dt));
+  // 현관문 가까이(약 1.4m) 오면 '나가기' 안내
+  let nearDoor = null;
+  updaters.push(() => { const d = Math.hypot(walker.pos.x - 0.15, walker.pos.z - 2.8); const n = d < 1.4 && !walker.focus; if (n !== nearDoor) { nearDoor = n; onNearDoor?.(n); } });
   // 트리 가까이(약 2m) 오면 '받은 메시지 읽기' 버튼 표시
   let near = null;
   updaters.push(() => { const d = Math.hypot(walker.pos.x - SPOT.tree.x, walker.pos.z - SPOT.tree.z); const n = d < 2.6 && !walker.focus; if (n !== near) { near = n; onNear?.(n); } });
   const q = new URLSearchParams(location.search);
-  const presets = { door: [0.3, -0.6, Math.PI + 0.08, -0.03], tree: [-0.55, 0.15, 0.47, 0.05], window: [0.5, 0.8, -0.35, 0.0], lamp: [0.3, 1.2, 1.1, -0.05], fire: [0.4, 0.6, 0.12, -0.12] };
+  const presets = { door: [0.3, -0.6, Math.PI + 0.08, -0.03], doornear: [0.2, 1.9, Math.PI, -0.05], tree: [-0.55, 0.15, 0.47, 0.05], window: [0.5, 0.8, -0.35, 0.0], lamp: [0.3, 1.2, 1.1, -0.05], fire: [0.4, 0.6, 0.12, -0.12] };
   if (presets[q.get('cam')]) { const [x, z, yaw, pitch] = presets[q.get('cam')]; walker.pos.set(x, 1.5, z); walker.yaw = yaw; walker.pitch = pitch; }
 
   function onResize() {
@@ -368,5 +366,6 @@ export function buildRoomView(container, { low, onReady, onPick, onNear, canInte
     unfocus() { ornaments?.clear(); walker.unfocus(); },
     setEnabled(v) { walker.enabled = v; if (!v) walker.keys.clear(); },
     setTime, applyTime, get time() { return timeMode; },
+    stepAwayFromDoor() { walker.pos.z = Math.min(walker.pos.z, 1.2); walker.yaw = 0; },
   };
 }

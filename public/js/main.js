@@ -6,12 +6,12 @@ import { ITEM_TYPES } from './data/catalog.js';
 import { createApi } from './net/api.js';
 import { sound } from './audio/sound.js';
 import { buildPhotoScene, photoAvailable } from './photo/photoScene.js';
-import { $, toast, setupEntry, setHud, setupCompose, showCard, setupList, closeModal, closeTop, anyModalOpen, modalState } from './ui/ui.js';
+import { $, toast, setupEntry, setHud, setupCompose, showCard, setupList, closeModal, closeTop, anyModalOpen, modalState, openModal } from './ui/ui.js';
 import { setupAdmin } from './ui/admin.js';
 
 const low = CONFIG.isTouch || (navigator.deviceMemory && navigator.deviceMemory < 4);
 if (CONFIG.isTouch) document.body.classList.add('touch');
-let view = null; let nearTree = false;
+let view = null; let nearTree = false; let nearDoor = false;
 let api; let state = { items: [], settings: {}, sealed: false }; const me = { name: '' }; let entered = false;
 const owner = () => state.settings.owner || '친구';
 const visibleItems = () => state.items.filter((it) => it.status === 'visible');
@@ -60,9 +60,22 @@ function syncNearUi() {
   const on = entered && (nearTree || !room);
   $('#btn-compose').hidden = !on;
   $('#btn-read').hidden = !(entered && nearTree);
-  $('#near-hint').hidden = !(entered && room && !nearTree);
+  $('#near-hint').hidden = !(entered && room && !nearTree && !nearDoor);
+  $('#btn-exit').hidden = !(entered && room && nearDoor);
 }
 $('#btn-compose').addEventListener('click', () => compose.open());
+// 현관문: 나가기 확인 → 나간 뒤 화면 → 다시 들어가기
+$('#btn-exit').addEventListener('click', () => { $('#exit-title').textContent = `${owner()}님의 방에서 나가시겠습니까?`; openModal('exit-modal'); });
+$('#exit-confirm').addEventListener('click', () => {
+  closeModal('exit-modal'); sound.stopMusic(); sound.ctx?.suspend?.(); view.setEnabled?.(false);
+  document.body.classList.add('bye'); $('#hud').hidden = true; $('#btn-exit').hidden = true;
+  $('#bye-title').textContent = `${owner()}님의 방을 나왔어요`; $('#bye').hidden = false; entered = false;
+});
+$('#bye-back').addEventListener('click', () => {
+  $('#bye').hidden = true; document.body.classList.remove('bye'); $('#hud').hidden = false; entered = true;
+  sound.init(); view.setEnabled?.(true); if (musicPref) sound.startMusic();
+  view.stepAwayFromDoor?.(); syncNearUi();
+});
 // 트리 근처에서: 최근 메시지부터 카드로 (이전/다음으로 넘기기)
 $('#btn-read').addEventListener('click', () => { const l = visibleItems().sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)); if (l.length) openItem(l[0].id); else toast('아직 받은 메시지가 없어요. 첫 선물을 놓아 보세요 🎁'); });
 $('#btn-list').addEventListener('click', () => list.open());
@@ -91,7 +104,7 @@ addEventListener('keydown', (e) => {
   if (hasModel && (!forced || forced === 'room')) {
     document.body.classList.add('room-mode');
     const { buildRoomView } = await import('./room/roomView.js');
-    view = buildRoomView(app, { low, onPick: openItem, onNear: (n) => { nearTree = n; syncNearUi(); }, canInteract: () => entered && !anyModalOpen() });
+    view = buildRoomView(app, { low, onPick: openItem, onNear: (n) => { nearTree = n; syncNearUi(); }, onNearDoor: (n) => { nearDoor = n; syncNearUi(); }, canInteract: () => entered && !anyModalOpen() });
     // 낮·밤 선택: ?time=day|night > 저장된 선택 > 기본 밤
     let saved = null; try { saved = localStorage.getItem('tree-time'); } catch { /* ignore */ }
     const initial = new URLSearchParams(location.search).get('time') || saved || 'night';

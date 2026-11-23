@@ -216,3 +216,13 @@ body.room-mode #btn-time { display: inline-grid; }
 
 .near-hint { font-size: 14px; color: #fbeed8; background: rgba(28, 16, 10, .45); padding: 8px 14px; border-radius: 999px; }
 #hint { display: none; }
+
+/* 나가기 */
+.exit-sheet { text-align: center; gap: 8px; width: min(380px, 100%); }
+.exit-sheet h2 { margin: 0; font-family: var(--serif); font-size: 20px; }
+.exit-icon { margin: 0; font-size: 34px; }
+.exit-actions { margin-top: 10px; }
+#bye { background: rgba(8, 4, 2, .82); }
+body.bye #app canvas { filter: brightness(.25) blur(3px); transition: filter 1.4s ease; }
+
+#bye h1, .entry-card h1 { word-break: keep-all; text-wrap: balance; }

@@ -47,6 +47,7 @@
       <p class="hint near-hint" id="near-hint" hidden>🎄 트리 가까이 가면 선물을 놓고 메시지를 읽을 수 있어요</p>
       <p class="hint" id="hint">트리 가까이 가면 받은 메시지를 읽을 수 있어요</p>
       <p class="hint walk-hint" id="walk-hint">WASD·방향키로 걷고, 드래그로 둘러보세요</p>
+      <button id="btn-exit" class="btn btn-read" hidden>🚪 방에서 나가기</button>
       <button id="btn-read" class="btn btn-read" hidden>💌 받은 메시지 읽기</button>
       <button id="btn-compose" class="btn btn-primary btn-compose">🎁 트리 아래 선물 놓기</button>
     </div>
@@ -54,6 +55,25 @@
 
   <div id="joystick" class="joystick"><div class="knob"></div></div>
   <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <!-- 나가기 확인 -->
+  <div class="modal" id="exit-modal" hidden>
+    <div class="sheet exit-sheet">
+      <p class="exit-icon">🚪</p>
+      <h2 id="exit-title">하늘님의 방에서 나가시겠습니까?</h2>
+      <p class="muted small">밖은 눈이 내리고 있어요. 언제든 다시 놀러 올 수 있어요.</p>
+      <div class="row exit-actions"><button class="btn btn-ghost grow" data-close>머무르기</button><button class="btn btn-primary grow" id="exit-confirm">나가기</button></div>
+    </div>
+  </div>
+  <!-- 나간 뒤 화면 -->
+  <section id="bye" class="entry" hidden>
+    <div class="entry-card">
+      <p class="eyebrow">SEE YOU SOON</p>
+      <h1 id="bye-title">하늘님의 방을 나왔어요</h1>
+      <p class="sub">따뜻한 연말 보내세요. 문은 언제든 열려 있어요.</p>
+      <button id="bye-back" class="btn btn-primary btn-lg">다시 들어가기</button>
+    </div>
+  </section>
 
   <!-- 작성 -->
   <div class="modal" id="compose-modal" hidden>
