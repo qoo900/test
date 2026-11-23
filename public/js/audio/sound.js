@@ -107,52 +107,77 @@ class SoundEngine {
   sparkle() { [0, 4, 7, 12, 16].forEach((st, i) => this.tone(1046 * 2 ** (st / 12), { gain: 0.06, decay: 0.9, when: i * 0.07, type: 'triangle' })); }
   ding() { this.tone(1568, { gain: 0.05, decay: 1.2 }); this.tone(1568 * 2.76, { gain: 0.015, decay: 0.5 }); }
 
-  // ── 오르골 캐럴: "고요한 밤" (F. Gruber, 1818 — 퍼블릭 도메인) ──
-  // [음이름, 8분음표 개수] / 6/8박자, 느린 템포
-  static MELODY = [
-    ['G4', 3], ['A4', 1], ['G4', 2], ['E4', 6], ['G4', 3], ['A4', 1], ['G4', 2], ['E4', 6],
-    ['D5', 4], ['D5', 2], ['B4', 6], ['C5', 4], ['C5', 2], ['G4', 6],
-    ['A4', 4], ['A4', 2], ['C5', 3], ['B4', 1], ['A4', 2], ['G4', 3], ['A4', 1], ['G4', 2], ['E4', 6],
-    ['A4', 4], ['A4', 2], ['C5', 3], ['B4', 1], ['A4', 2], ['G4', 3], ['A4', 1], ['G4', 2], ['E4', 6],
-    ['D5', 4], ['D5', 2], ['F5', 3], ['D5', 1], ['B4', 2], ['C5', 6], ['E5', 6],
-    ['C5', 3], ['G4', 1], ['E4', 2], ['G4', 3], ['F4', 1], ['D4', 2], ['C4', 12],
+  // ── 밝은 캐럴 (모두 퍼블릭 도메인) ──
+  //  1) Jingle Bells 후렴 (J. L. Pierpont, 1857)  2) We Wish You a Merry Christmas (영국 전래)
+  // [음이름, 8분음표 개수], 반주는 마디(8분음표 8개 또는 6개)마다 근음 + 화음
+  static SONGS = [
+    { name: 'Jingle Bells', eighth: 0.17, bar: 8, bells: true,
+      notes: [['E5',2],['E5',2],['E5',4],['E5',2],['E5',2],['E5',4],['E5',2],['G5',2],['C5',3],['D5',1],['E5',8],
+              ['F5',2],['F5',2],['F5',3],['F5',1],['F5',2],['E5',2],['E5',2],['E5',1],['E5',1],['E5',2],['D5',2],['D5',2],['E5',2],['D5',4],['G5',4],
+              ['E5',2],['E5',2],['E5',4],['E5',2],['E5',2],['E5',4],['E5',2],['G5',2],['C5',3],['D5',1],['E5',8],
+              ['F5',2],['F5',2],['F5',2],['F5',2],['F5',2],['E5',2],['E5',2],['E5',1],['E5',1],['G5',2],['G5',2],['F5',2],['D5',2],['C5',8]],
+      chords: ['C','C','C','C','F','C','D','G','C','C','C','C','F','C','G','C'] },
+    { name: 'We Wish You a Merry Christmas', eighth: 0.2, bar: 6, pickup: 2, bells: false,
+      notes: [['G4',2],['C5',2],['C5',1],['D5',1],['C5',1],['B4',1],['A4',2],['A4',2],['A4',2],['D5',2],['D5',1],['E5',1],['D5',1],['C5',1],
+              ['B4',2],['G4',2],['G4',2],['E5',2],['E5',1],['F5',1],['E5',1],['D5',1],['C5',2],['A4',2],['G4',1],['G4',1],['A4',2],['D5',2],['B4',2],['C5',6]],
+      chords: ['C','F','D','G','E','Am','G','C'] },
   ];
+  static CHORD = { C: ['C3', 'E4', 'G4'], F: ['F3', 'A4', 'C5'], G: ['G3', 'B4', 'D5'], D: ['D3', 'F#4', 'A4'], E: ['E3', 'G#4', 'B4'], Am: ['A2', 'C4', 'E4'] };
   static freq(n) {
     const map = { C: -9, D: -7, E: -5, F: -4, G: -2, A: 0, B: 2 };
-    return 440 * 2 ** ((map[n[0]] + (Number(n[1]) - 4) * 12) / 12);
+    const sharp = n[1] === '#' ? 1 : 0; const oct = Number(n.slice(1 + sharp));
+    return 440 * 2 ** ((map[n[0]] + sharp + (oct - 4) * 12) / 12);
   }
-  musicBox(freq, when, dur) {
+  // 맑은 글로켄슈필/첼레스타 느낌: 짧게 반짝이고 금방 사라지는 소리
+  bellNote(freq, when, dur, vol = 1) {
     const c = this.ctx; const t = c.currentTime + when;
-    const g = c.createGain(); g.connect(this.musicGain);
-    [[1, 0.5, 2.2], [2, 0.12, 0.9], [3.01, 0.05, 0.4], [5.4, 0.025, 0.2]].forEach(([m, a, d]) => {
+    [[1, 0.42, 0.9], [2.0, 0.14, 0.35], [3.0, 0.06, 0.18], [4.2, 0.03, 0.1]].forEach(([m, a, d]) => {
       const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = freq * m;
-      const og = c.createGain(); og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(a, t + 0.006); og.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(d, dur * 0.9));
-      o.connect(og); og.connect(g); o.start(t); o.stop(t + Math.max(d, dur) + 0.1);
+      const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(a * vol, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + Math.min(d, dur + 0.4));
+      o.connect(g); g.connect(this.musicGain); o.start(t); o.stop(t + d + 0.05);
     });
-    // 아래 화음(5도/옥타브 아래)을 아주 작게
-    if (dur >= 1.5) {
-      const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = freq / 2;
-      const og = c.createGain(); og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.12, t + 0.01); og.gain.exponentialRampToValueAtTime(0.0001, t + dur * 1.2);
-      o.connect(og); og.connect(g); o.start(t); o.stop(t + dur * 1.3);
-    }
+  }
+  // 부드러운 반주(따뜻한 삼각파 화음)
+  padChord(names, when, dur) {
+    const c = this.ctx; const t = c.currentTime + when;
+    names.forEach((n, i) => {
+      const o = c.createOscillator(); o.type = 'triangle'; o.frequency.value = SoundEngine.freq(n);
+      const g = c.createGain(); const v = i === 0 ? 0.16 : 0.05;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.95);
+      o.connect(g); g.connect(this.musicGain); o.start(t); o.stop(t + dur);
+    });
+  }
+  // 썰매 방울: 짧은 고음 노이즈
+  sleighBell(when) {
+    const c = this.ctx; const t = c.currentTime + when;
+    const s = c.createBufferSource(); s.buffer = this.white();
+    const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 6500;
+    const g = c.createGain(); g.gain.setValueAtTime(0.05, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    s.connect(hp); hp.connect(g); g.connect(this.musicGain); s.start(t, Math.random() * 0.5); s.stop(t + 0.1);
   }
   startMusic() {
     if (!this.ctx || this.musicOn) return;
     this.musicOn = true;
     if (!this.musicGain) {
-      this.musicGain = this.ctx.createGain(); this.musicGain.gain.value = 0.16;
-      // 잔향 느낌: 짧은 딜레이 피드백
-      const d = this.ctx.createDelay(1); d.delayTime.value = 0.33; const fb = this.ctx.createGain(); fb.gain.value = 0.35;
-      const lp = this.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3000;
+      this.musicGain = this.ctx.createGain(); this.musicGain.gain.value = 0.2;
+      const d = this.ctx.createDelay(1); d.delayTime.value = 0.12; const fb = this.ctx.createGain(); fb.gain.value = 0.12; // 아주 가벼운 울림만
+      const lp = this.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4000;
       this.musicGain.connect(this.master); this.musicGain.connect(d); d.connect(lp); lp.connect(fb); fb.connect(d); lp.connect(this.master);
     }
-    this.musicGain.gain.setTargetAtTime(0.16, this.ctx.currentTime, 0.5);
-    const eighth = 0.36;
+    this.musicGain.gain.setTargetAtTime(0.2, this.ctx.currentTime, 0.3);
+    let songIdx = 0;
     const play = () => {
       if (!this.musicOn) return;
-      let t = 0.1;
-      for (const [n, len] of SoundEngine.MELODY) { this.musicBox(SoundEngine.freq(n), t, len * eighth); t += len * eighth; }
-      this.musicTimer = setTimeout(play, (t + 6) * 1000); // 한 번 끝나면 6초 쉬고 다시
+      const song = SoundEngine.SONGS[songIdx++ % SoundEngine.SONGS.length]; const e = song.eighth;
+      let t = 0.15;
+      for (const [n, len] of song.notes) { this.bellNote(SoundEngine.freq(n), t, len * e); t += len * e; }
+      const start = 0.15 + (song.pickup || 0) * e;
+      song.chords.forEach((ch, i) => {
+        const bt = start + i * song.bar * e;
+        this.padChord(SoundEngine.CHORD[ch], bt, song.bar * e);
+        if (song.bells) for (let k = 0; k < song.bar; k += 2) this.sleighBell(bt + k * e);
+      });
+      this.musicTimer = setTimeout(play, (t + 3) * 1000); // 곡 사이 3초 쉬고 다음 곡
     };
     play();
   }
