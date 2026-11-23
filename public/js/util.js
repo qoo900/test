@@ -75,7 +75,7 @@ export function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-// 부드러운 원형 글로우 텍스처 (연등/별빛/눈송이 공용)
+// 부드러운 원형 글로우 텍스처 (별빛/불빛/눈송이 공용)
 let _glow;
 export function glowTexture() {
   if (_glow) return _glow;
