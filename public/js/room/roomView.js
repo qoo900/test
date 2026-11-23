@@ -59,6 +59,41 @@ const dayTex = () => canvasTex(1024, 512, (ctx, w, h) => {
   ridge(h * 0.78, 10, '#eef3fb'); ridge(h * 0.86, 6, '#ffffff');
 });
 
+// 앞쪽 벽 가운데 현관문: 짙은 초록 패널 문, 흰 문틀, 놋쇠 손잡이, 문 화환, 현관 매트
+function buildFrontDoor(scene) {
+  const g = new THREE.Group(); g.position.set(0.15, 0, 2.8); g.rotation.y = Math.PI; scene.add(g); // 문 앞면이 방 안(-z)을 향함
+  const S = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, ...o });
+  const W = 1.0, H = 2.15, frame = S('#f1ebdf'), door = S('#2b4a36', { roughness: 0.5 }), panel = S('#24402f', { roughness: 0.5 }), brass = S('#c8a050', { metalness: 0.8, roughness: 0.3 });
+  const box = (w, h, d, m, x, y, z) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); g.add(b); return b; };
+  // 문 뒤 어두운 틈(벽 몰딩 가림) + 문틀
+  box(W + 0.02, H + 0.02, 0.03, S('#1a120c'), 0, H / 2, 0.035);
+  box(0.12, H + 0.12, 0.08, frame, -W / 2 - 0.06, (H + 0.12) / 2, 0.06); box(0.12, H + 0.12, 0.08, frame, W / 2 + 0.06, (H + 0.12) / 2, 0.06);
+  box(W + 0.36, 0.14, 0.09, frame, 0, H + 0.1, 0.065); box(W + 0.44, 0.04, 0.12, frame, 0, H + 0.19, 0.075); // 상인방 + 코니스
+  // 문짝 + 6패널
+  box(W, H, 0.05, door, 0, H / 2, 0.075);
+  [[0.25, 1.72, 0.42], [0.25, 1.08, 0.62], [0.25, 0.42, 0.5]].forEach(([dx, y, h]) => { [-1, 1].forEach((s) => box(0.34, h, 0.02, panel, s * dx, y, 0.105)); });
+  // 손잡이 + 열쇠구멍판
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 10), brass); knob.position.set(0.38, 1.0, 0.13); g.add(knob);
+  box(0.05, 0.14, 0.01, brass, 0.38, 0.97, 0.104);
+  // 문 화환
+  const wreath = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.065, 8, 24), S('#2f6b42', { roughness: 0.8 })); wreath.position.set(0, 1.6, 0.16); g.add(wreath);
+  const red = S('#b3202a');
+  for (let i = 0; i < 9; i++) { const a = (i / 9) * Math.PI * 2; const b = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), red); b.position.set(Math.cos(a) * 0.2, 1.6 + Math.sin(a) * 0.2, 0.21); g.add(b); }
+  const bow = box(0.14, 0.07, 0.03, red, 0, 1.39, 0.2); bow.rotation.z = 0.05;
+  // 문 양옆 벽 촛대(밤에 문 쪽이 너무 어둡지 않게 은은한 빛 하나)
+  [-1, 1].forEach((sd) => {
+    const x = sd * (W / 2 + 0.38);
+    box(0.08, 0.16, 0.04, brass, x, 1.62, 0.04); box(0.03, 0.03, 0.12, brass, x, 1.56, 0.1);
+    box(0.05, 0.12, 0.05, S('#f3ead6'), x, 1.65, 0.16);
+    const f = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: '#ffc46a', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.85 }));
+    f.scale.set(0.16, 0.22, 1); f.position.set(x, 1.75, 0.16); g.add(f);
+  });
+  const doorLight = new THREE.PointLight('#ffbf70', 1.1, 0, 2); doorLight.position.set(0, 1.9, 0.6); g.add(doorLight);
+  // 현관 매트
+  const mat = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.015, 0.55), S('#6b3a2a', { roughness: 0.95 })); mat.position.set(0, 0.008, 0.42); g.add(mat);
+  const mat2 = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.017, 0.4), S('#8a5a3a', { roughness: 0.95 })); mat2.position.set(0, 0.009, 0.42); g.add(mat2);
+}
+
 export function buildRoomView(container, { low, onReady, onPick, onNear, canInteract = () => true }) {
   const renderer = new THREE.WebGLRenderer({ antialias: !low, powerPreference: low ? 'default' : 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, low ? 1.25 : 1.75));
@@ -250,15 +285,36 @@ export function buildRoomView(container, { low, onReady, onPick, onNear, canInte
       fire.intensity = fireBase + Math.sin(t * 11) * fireBase * 0.17 + Math.sin(t * 27) * fireBase * 0.1;
       fg.material.opacity = 0.32 + Math.sin(t * 9) * 0.06;
     });
-    // 앞쪽 벽: 모델에 없어서 뒷벽과 같은 벽지 재질로 막음
+    // 앞쪽 벽: 모델에 없어서 왼쪽 벽(벽지 + 웨인스코팅 몰딩)을 그대로 복제해 90° 돌려 세움 → 옆벽과 같은 벽지
     {
-      const rc = new THREE.Raycaster(new THREE.Vector3(-2.2, 1.8, 0), new THREE.Vector3(0, 0, -1)); rc.far = 3.2;
-      const hit = rc.intersectObject(root, true)[0];
-      const wm = hit ? hit.object.material.clone() : new THREE.MeshStandardMaterial({ color: '#d8cbb8' });
-      if (wm.map) { wm.map = wm.map.clone(); wm.map.wrapS = wm.map.wrapT = THREE.RepeatWrapping; wm.map.repeat.set(3, 1.8); wm.map.needsUpdate = true; }
-      wm.side = THREE.DoubleSide;
-      const front = new THREE.Mesh(new THREE.PlaneGeometry(5.62, 3.27), wm); front.position.set(0, 1.635, 2.8); front.rotation.y = Math.PI; scene.add(front);
-      const base = new THREE.Mesh(new THREE.BoxGeometry(5.62, 0.14, 0.03), new THREE.MeshStandardMaterial({ color: '#efe8dc', roughness: 0.6 })); base.position.set(0, 0.07, 2.78); scene.add(base);
+      const pick = new Set(['_Color_A03_34', '_Color_A03_36']); const bucket = new Map();
+      const va = new THREE.Vector3(), na = new THREE.Vector3(); const nm = new THREE.Matrix3();
+      root.traverse((o) => {
+        if (!o.isMesh || o.isInstancedMesh || !pick.has(o.material?.name)) return;
+        const g = o.geometry, pos = g.attributes.position, nor = g.attributes.normal, uv = g.attributes.uv, idx = g.index;
+        nm.getNormalMatrix(o.matrixWorld); const n = idx ? idx.count : pos.count;
+        const e = bucket.get(o.material) || { p: [], n: [], u: [] };
+        for (let t = 0; t < n; t += 3) {
+          const ids = [0, 1, 2].map((k) => (idx ? idx.getX(t + k) : t + k));
+          const vs = ids.map((i) => va.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld).clone());
+          if (vs.some((v) => v.x > -2.66)) continue; // 왼쪽 벽 면에 붙은 삼각형만
+          ids.forEach((i, k) => {
+            e.p.push(vs[k].x, vs[k].y, vs[k].z);
+            if (nor) { na.fromBufferAttribute(nor, i).applyMatrix3(nm).normalize(); e.n.push(na.x, na.y, na.z); }
+            if (uv) e.u.push(uv.getX(i), uv.getY(i));
+          });
+        }
+        bucket.set(o.material, e);
+      });
+      for (const [mat, e] of bucket) {
+        if (!e.p.length) continue;
+        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(e.p, 3));
+        if (e.n.length) g.setAttribute('normal', new THREE.Float32BufferAttribute(e.n, 3)); else g.computeVertexNormals();
+        if (e.u.length) g.setAttribute('uv', new THREE.Float32BufferAttribute(e.u, 2));
+        g.rotateY(Math.PI / 2); // 왼쪽 벽(x=-2.8, 안쪽 +x) → 앞쪽 벽(z=+2.8, 안쪽 -z)
+        scene.add(new THREE.Mesh(g, mat));
+      }
+      buildFrontDoor(scene);
     }
     // 롤링페이퍼 장식
     ornaments = new RoomOrnaments(scene, new THREE.Vector3(SPOT.tree.x, 0, SPOT.tree.z), treeVerts);
@@ -287,7 +343,7 @@ export function buildRoomView(container, { low, onReady, onPick, onNear, canInte
   let near = null;
   updaters.push(() => { const d = Math.hypot(walker.pos.x - SPOT.tree.x, walker.pos.z - SPOT.tree.z); const n = d < 2.6 && !walker.focus; if (n !== near) { near = n; onNear?.(n); } });
   const q = new URLSearchParams(location.search);
-  const presets = { tree: [-0.55, 0.15, 0.47, 0.05], window: [0.5, 0.8, -0.35, 0.0], lamp: [0.3, 1.2, 1.1, -0.05], fire: [0.4, 0.6, 0.12, -0.12] };
+  const presets = { door: [0.3, -0.6, Math.PI + 0.08, -0.03], tree: [-0.55, 0.15, 0.47, 0.05], window: [0.5, 0.8, -0.35, 0.0], lamp: [0.3, 1.2, 1.1, -0.05], fire: [0.4, 0.6, 0.12, -0.12] };
   if (presets[q.get('cam')]) { const [x, z, yaw, pitch] = presets[q.get('cam')]; walker.pos.set(x, 1.5, z); walker.yaw = yaw; walker.pitch = pitch; }
 
   function onResize() {
