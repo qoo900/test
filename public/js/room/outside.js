@@ -2,6 +2,7 @@
 // 걸어 다닐 때 원근감이 살도록 평면 그림 대신 실제 오브젝트로 배치. 저사양을 위해 InstancedMesh + Lambert 위주.
 import * as THREE from 'three';
 import { glowTexture, rng } from '../util.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const L = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, ...o });
 
@@ -61,17 +62,43 @@ export function buildOutside(scene, { low }) {
     spots.push([x, z, 0.7 + r() * 0.9, r() * 6]);
   }
   [[-1.2, -6.5, 1.1], [8.6, -8, 1.3], [-2.4, -10, 1.2], [9.5, -12, 1.0], [3.2, -21, 1.2], [5.4, -23, 1.4]].forEach(([x, z, s]) => spots.push([x, z, s, r() * 6])); // 창 양옆을 감싸는 나무
+  // 소나무 형태: 층층이 겹친 원뿔 가장자리를 들쭉날쭉하게 + 안쪽은 짙고 가지 끝은 밝은 초록 → 식물처럼
+  function pineGeometry() {
+    const pr = rng(77); const foliage = []; const snow = [];
+    const dark = new THREE.Color('#1f4d2b'), tip = new THREE.Color('#4f9a4f'), c = new THREE.Color();
+    for (let k = 0; k < 5; k++) {
+      const rad = 1.35 * (1 - k * 0.17), h = 1.25 - k * 0.1, y0 = 0.85 + k * 0.62;
+      const g = new THREE.ConeGeometry(rad, h, 14, 3, true); g.translate(0, y0 + h / 2, 0);
+      const p = g.attributes.position; const cols = new Float32Array(p.count * 3);
+      for (let i = 0; i < p.count; i++) {
+        const x = p.getX(i), y = p.getY(i), z = p.getZ(i); const t = 1 - (y - y0) / h; // 0=꼭짓점, 1=가장자리
+        const a = Math.atan2(z, x); const j = 0.82 + 0.36 * Math.abs(Math.sin(a * 7 + k * 1.7)) * (0.6 + 0.4 * pr());
+        const sx = t > 0.5 ? j : 1 + (j - 1) * t; p.setX(i, x * sx); p.setZ(i, z * sx);
+        if (t > 0.95) p.setY(i, y - 0.1 * pr() - 0.06 * Math.abs(Math.sin(a * 5)));   // 가지 끝이 살짝 처짐
+        c.copy(dark).lerp(tip, Math.min(1, t * 1.1) * (0.75 + 0.25 * pr())); cols.set([c.r, c.g, c.b], i * 3);
+      }
+      g.setAttribute('color', new THREE.BufferAttribute(cols, 3)); g.computeVertexNormals(); foliage.push(g);
+      if (k >= 1) { // 위쪽 단에만 얇게 눈이 얹힘 (초록이 보이도록)
+        const sg = new THREE.ConeGeometry(rad * 0.62, h * 0.32, 14, 1, true); sg.translate(0, y0 + h * 0.86, 0);
+        const sp = sg.attributes.position; for (let i = 0; i < sp.count; i++) { const a = Math.atan2(sp.getZ(i), sp.getX(i)); const j = 0.8 + 0.3 * Math.abs(Math.sin(a * 6 + k)); sp.setX(i, sp.getX(i) * j); sp.setZ(i, sp.getZ(i) * j); }
+        sg.computeVertexNormals(); snow.push(sg);
+      }
+    }
+    return { foliage: mergeGeometries(foliage), snow: mergeGeometries(snow) };
+  }
+  const pine = pineGeometry();
   const parts = [
-    [new THREE.CylinderGeometry(0.12, 0.18, 1.2, 6).translate(0, 0.6, 0), L('#4a3424')],
-    [new THREE.ConeGeometry(1.25, 2.4, 8).translate(0, 2.0, 0), L('#1e3d31', { flatShading: true })],
-    [new THREE.ConeGeometry(0.95, 2.0, 8).translate(0, 3.3, 0), L('#244a3a', { flatShading: true })],
-    [new THREE.ConeGeometry(1.0, 0.7, 8).translate(0, 2.55, 0), L('#f2f6ff', { flatShading: true })],   // 아랫단 눈
-    [new THREE.ConeGeometry(0.6, 0.9, 8).translate(0, 4.05, 0), L('#f6f9ff', { flatShading: true })],   // 꼭대기 눈
+    [new THREE.CylinderGeometry(0.1, 0.17, 1.2, 6).translate(0, 0.6, 0), L('#4a3424'), false],
+    [pine.foliage, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), true],
+    [pine.snow, L('#f4f7ff', { side: THREE.DoubleSide }), false],
   ];
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
-  for (const [geo, mat] of parts) {
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(); const tint = new THREE.Color();
+  for (const [geo, mat, tinted] of parts) {
     const im = new THREE.InstancedMesh(geo, mat, spots.length);
-    spots.forEach(([x, z, s, ry], i) => { q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), ry); sc.setScalar(s); m4.compose(new THREE.Vector3(x, 0, z), q, sc); im.setMatrixAt(i, m4); });
+    spots.forEach(([x, z, s, ry], i) => {
+      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), ry); sc.set(s * (0.9 + (i % 5) * 0.05), s, s * (0.9 + (i % 3) * 0.07)); m4.compose(new THREE.Vector3(x, 0, z), q, sc); im.setMatrixAt(i, m4);
+      if (tinted) { tint.setHSL(0.30 + ((i * 37) % 10) / 200, 0.55, 0.5 + ((i * 53) % 10) / 60); im.setColorAt(i, tint.multiplyScalar(1.35)); } // 나무마다 초록 톤을 조금씩 다르게
+    });
     root.add(im);
   }
 
