@@ -51,8 +51,9 @@ export function buildPhotoScene(container, { onPick }) {
   let scale = 1;
   function layout() {
     const W = innerWidth, H = innerHeight;
-    const treeW = (PHOTO.tree.profile.at(-1)[1] + 30) * 2;
-    const v0 = 30, v1 = PHOTO.base.cy + PHOTO.base.ry + 30;     // 별 꼭대기 ~ 트리 스커트 아래
+    const U = PHOTO.w / 1206;
+    const treeW = (PHOTO.tree.profile.at(-1)[1] + 30 * U) * 2;
+    const v0 = 30 * U, v1 = PHOTO.base.cy + PHOTO.base.ry + 30 * U;     // 별 꼭대기 ~ 트리 스커트 아래
     const topRes = 64, botRes = 104;                           // HUD가 차지하는 위/아래 여백
     const availH = Math.max(200, H - topRes - botRes);
     scale = Math.min(Math.max(W / PHOTO.w, H / PHOTO.h), (W * 0.98) / treeW, availH / (v1 - v0));
@@ -60,7 +61,7 @@ export function buildPhotoScene(container, { onPick }) {
     const left = W / 2 - PHOTO.tree.cx * scale;
     const top = topRes + (availH - (v1 - v0) * scale) / 2 - v0 * scale;
     Object.assign(stage.style, { width: `${sw}px`, height: `${sh}px`, left: `${left}px`, top: `${top}px` });
-    stage.style.setProperty('--orn', `${Math.max(30, 50 * scale)}px`);
+    stage.style.setProperty('--orn', `${Math.max(30, 50 * scale * (PHOTO.w / 1206))}px`);
     fx.width = Math.round(sw * Math.min(devicePixelRatio, 1.5)); fx.height = Math.round(sh * Math.min(devicePixelRatio, 1.5));
   }
   addEventListener('resize', layout); layout();
@@ -70,7 +71,8 @@ export function buildPhotoScene(container, { onPick }) {
   function slots(items) {
     const placed = []; const out = new Map();
     const tree = items.filter((it) => it.zone !== 'base'); const base = items.filter((it) => it.zone === 'base');
-    const minD = 62;
+    const U = PHOTO.w / 1206; // 이미지 크기에 따른 단위 보정
+    const minD = 62 * U;
     tree.forEach((it, k) => {
       let best = null;
       for (let j = 0; j < 24; j++) {
@@ -78,7 +80,7 @@ export function buildPhotoScene(container, { onPick }) {
         const y = PHOTO.tree.yTop + vdc(n) * (PHOTO.tree.yBottom - PHOTO.tree.yTop);
         const hw = halfWidthAt(y) * 0.86;
         const x = PHOTO.tree.cx + (((n * 0.618034) % 1) * 2 - 1) * hw;
-        if (inAvoid(x, y, 20)) continue;
+        if (inAvoid(x, y, 20 * U)) continue;
         const d = placed.reduce((m, [px, py]) => Math.min(m, Math.hypot(px - x, py - y)), Infinity);
         if (!best || d > best.d) best = { x, y, d };
         if (d > minD) break;
@@ -87,8 +89,8 @@ export function buildPhotoScene(container, { onPick }) {
     });
     base.forEach((it, k) => {
       const col = k % 7, row = Math.floor(k / 7);
-      const x = PHOTO.base.cx + ((col - 3) / 3.3) * PHOTO.base.rx + (row % 2) * 30;
-      const y = PHOTO.base.cy + (col % 2 ? 14 : -10) - row * 34;
+      const x = PHOTO.base.cx + ((col - 3) / 3.3) * PHOTO.base.rx + (row % 2) * 30 * U;
+      const y = PHOTO.base.cy + (col % 2 ? 14 : -10) * U - row * 34 * U;
       out.set(it.id, { x, y });
     });
     return out;
@@ -135,9 +137,10 @@ export function buildPhotoScene(container, { onPick }) {
   function newSpark() {
     const y = PHOTO.tree.yTop + Math.random() * (PHOTO.tree.yBottom - PHOTO.tree.yTop);
     const x = PHOTO.tree.cx + (Math.random() * 2 - 1) * halfWidthAt(y) * 0.9;
-    return { x, y, t: Math.random() * 3, life: 1.4 + Math.random() * 1.8, s: 0.6 + Math.random() };
+    return { x, y, t: Math.random() * 3, life: 1.4 + Math.random() * 1.8, s: (0.6 + Math.random()) * (PHOTO.w / 1206) };
   }
-  const motes = Array.from({ length: 18 }, () => ({ x: Math.random() * PHOTO.w, y: Math.random() * PHOTO.h, v: 6 + Math.random() * 10, r: 3 + Math.random() * 6, ph: Math.random() * 6 }));
+  const MU = PHOTO.w / 1206;
+  const motes = Array.from({ length: 18 }, () => ({ x: Math.random() * PHOTO.w, y: Math.random() * PHOTO.h, v: (6 + Math.random() * 10) * MU, r: (3 + Math.random() * 6) * MU, ph: Math.random() * 6 }));
   let last = performance.now();
   function tick(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -145,7 +148,7 @@ export function buildPhotoScene(container, { onPick }) {
     ctx.clearRect(0, 0, fx.width, fx.height);
     ctx.globalCompositeOperation = 'lighter';
     for (const m of motes) {
-      m.y -= m.v * dt; m.x += Math.sin(now / 1500 + m.ph) * 4 * dt; if (m.y < -20) { m.y = PHOTO.h + 20; m.x = Math.random() * PHOTO.w; }
+      m.y -= m.v * dt; m.x += Math.sin(now / 1500 + m.ph) * 4 * MU * dt; if (m.y < -20) { m.y = PHOTO.h + 20; m.x = Math.random() * PHOTO.w; }
       const g = ctx.createRadialGradient(m.x * k, m.y * k, 0, m.x * k, m.y * k, m.r * k * 2.2);
       g.addColorStop(0, 'rgba(255,214,150,0.22)'); g.addColorStop(1, 'rgba(255,214,150,0)');
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(m.x * k, m.y * k, m.r * k * 2.2, 0, 7); ctx.fill();
