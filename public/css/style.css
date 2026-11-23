@@ -202,3 +202,10 @@ body.room-mode .brand, body.room-mode .icon-btn { background: rgba(28, 16, 10, .
 body.room-mode.entered.touch .joystick:not(.active) { display: block; left: 22px; top: auto; bottom: 120px; opacity: .55; }
 .walk-hint { display: none; }
 body.room-mode .walk-hint { display: block; }
+
+/* ── 낮·밤 전환 ── */
+.room-fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .38s ease; }
+.room-fade.on { opacity: .85; }
+body.day .room-grade { background: radial-gradient(ellipse 85% 80% at 50% 50%, rgba(0,0,0,0) 60%, rgba(30, 20, 10, .28) 100%); }
+#btn-time { display: none; }
+body.room-mode #btn-time { display: inline-grid; }

@@ -82,6 +82,17 @@ addEventListener('keydown', (e) => {
     document.body.classList.add('room-mode');
     const { buildRoomView } = await import('./room/roomView.js');
     view = buildRoomView(app, { low, onPick: openItem, canInteract: () => entered && !anyModalOpen() });
+    // 낮·밤 선택: ?time=day|night > 저장된 선택 > 기본 밤
+    let saved = null; try { saved = localStorage.getItem('tree-time'); } catch { /* ignore */ }
+    const initial = new URLSearchParams(location.search).get('time') || saved || 'night';
+    const timeBtn = $('#btn-time');
+    const syncTimeBtn = () => { const day = view.time === 'day'; timeBtn.textContent = day ? '☀️' : '🌙'; timeBtn.title = day ? '밤으로 바꾸기' : '낮으로 바꾸기'; };
+    view.applyTime(initial === 'day' ? 'day' : 'night'); syncTimeBtn();
+    timeBtn.addEventListener('click', () => {
+      const next = view.time === 'day' ? 'night' : 'day';
+      view.setTime(next); try { localStorage.setItem('tree-time', next); } catch { /* ignore */ }
+      setTimeout(syncTimeBtn, 400); toast(next === 'day' ? '☀️ 낮으로 바꿨어요' : '🌙 밤으로 바꿨어요');
+    });
   } else if (hasPhoto && forced !== '3d') {
     document.body.classList.add('photo-mode');
     view = buildPhotoScene(app, { onPick: openItem });

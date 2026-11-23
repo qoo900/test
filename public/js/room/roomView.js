@@ -16,7 +16,8 @@ export const MODEL_URL = './models/room.glb';
 const SCALE = 100;
 const SPOT = {
   fire: new THREE.Vector3(0, 0.42, -2.55),
-  tree: new THREE.Vector3(-1.6, 0, -1.9),
+  tree: new THREE.Vector3(-1.78, 0, -1.95),   // 트리 줄기 축 (모델 측정)
+  star: new THREE.Vector3(-1.81, 2.46, -1.88), // 꼭대기 별 중심 (모델 측정)
   lamp: new THREE.Vector3(-2.55, 1.5, -0.19),   // 스탠드 전등 갓 (왼쪽 벽 앞)
   window: { x0: 1.17, x1: 2.43, y0: 0.38, y1: 2.82, z: -2.8 }, // 뒷벽 오른쪽 큰 창
 };
@@ -44,6 +45,19 @@ const nightTex = () => canvasTex(1024, 512, (ctx, w, h) => {
   ridge(h * 0.78, 10, '#cfdcf2'); ridge(h * 0.86, 6, '#e8eefb');
 });
 
+// 낮 창밖: 맑은 겨울 하늘, 눈 덮인 언덕과 소나무
+const dayTex = () => canvasTex(1024, 512, (ctx, w, h) => {
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, '#8fb6e8'); g.addColorStop(0.55, '#cfe0f5'); g.addColorStop(1, '#f2f6fb');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  const r = rng(19);
+  ctx.fillStyle = 'rgba(255,255,255,.7)'; for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.ellipse(r() * w, 40 + r() * 120, 80 + r() * 90, 18 + r() * 14, 0, 0, 7); ctx.fill(); }
+  const ridge = (y0, amp, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, h); for (let x = 0; x <= w; x += 16) ctx.lineTo(x, y0 + Math.sin(x * 0.006 + y0) * amp); ctx.lineTo(w, h); ctx.fill(); };
+  ridge(h * 0.6, 18, '#b9c9df');
+  for (let i = 0; i < 40; i++) { const x = r() * w, s = 18 + r() * 40, by = h * 0.72 + r() * 10; ctx.fillStyle = '#3d5a4a'; ctx.beginPath(); ctx.moveTo(x, by - s * 1.8); ctx.lineTo(x - s * 0.45, by); ctx.lineTo(x + s * 0.45, by); ctx.fill(); ctx.fillStyle = '#f4f8ff'; ctx.beginPath(); ctx.moveTo(x, by - s * 1.8); ctx.lineTo(x - s * 0.18, by - s * 1.1); ctx.lineTo(x + s * 0.18, by - s * 1.1); ctx.fill(); }
+  ridge(h * 0.78, 10, '#eef3fb'); ridge(h * 0.86, 6, '#ffffff');
+});
+
 export function buildRoomView(container, { low, onReady, onPick, canInteract = () => true }) {
   const renderer = new THREE.WebGLRenderer({ antialias: !low, powerPreference: low ? 'default' : 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, low ? 1.25 : 1.75));
@@ -59,14 +73,22 @@ export function buildRoomView(container, { low, onReady, onPick, canInteract = (
   const updaters = [];
 
   // ── 조명: 밤. 주 광원은 벽난로 / 트리 전구 / 스탠드 ──
-  scene.add(new THREE.HemisphereLight('#ffcf9e', '#2b1a10', 0.08));
+  const hemi = new THREE.HemisphereLight('#ffcf9e', '#2b1a10', 0.08); scene.add(hemi);
   const moon = new THREE.DirectionalLight('#7f9cff', 0.22); moon.position.set(4, 5, -6); scene.add(moon);
+  let fireBase = 4.8;
   const fire = new THREE.PointLight('#ff7a2c', 5, 0, 2); fire.position.copy(SPOT.fire).add(new THREE.Vector3(0, 0.1, 0.45)); scene.add(fire);
   const treeL = new THREE.PointLight('#ffc477', 1.7, 0, 2); treeL.position.copy(SPOT.tree).add(new THREE.Vector3(0.55, 1.5, 1.25)); scene.add(treeL);
-  const lamp = new THREE.PointLight('#ffc98a', 0.8, 0, 2); lamp.position.copy(SPOT.lamp).add(new THREE.Vector3(0.3, -0.25, 0)); // 벽에서 조금 띄워 벽이 하얗게 타지 않게 scene.add(lamp);
+  // 스탠드: 모델에는 갓·기둥만 있어서 전구와 빛을 직접 만듦
+  //  - 갓 아래로 원뿔 모양 빛(바닥·벽 아래쪽에 빛 웅덩이), 갓 위로 약한 빛(벽·천장), 갓 천은 안에서 비치는 듯 은은하게
+  const bulbPos = SPOT.lamp.clone().add(new THREE.Vector3(0, -0.04, 0));
+  const lampDown = new THREE.SpotLight('#ffc27a', 3.2, 3.5, Math.PI / 3.4, 0.75, 2); lampDown.position.copy(bulbPos);
+  lampDown.target.position.set(bulbPos.x + 0.15, 0, bulbPos.z); scene.add(lampDown, lampDown.target);
+  const lampUp = new THREE.SpotLight('#ffcf94', 1.4, 2.5, Math.PI / 4.2, 0.85, 2); lampUp.position.copy(bulbPos);
+  lampUp.target.position.set(bulbPos.x + 0.1, 3.3, bulbPos.z); scene.add(lampUp, lampUp.target);
+  const lampFill = new THREE.PointLight('#ffc98a', 0.18, 0, 2); lampFill.position.copy(bulbPos).add(new THREE.Vector3(0.45, -0.3, 0)); scene.add(lampFill);
 
   // ── 창밖 밤 풍경 + 눈 ──
-  const nt = nightTex();
+  const nt = nightTex(); const dt2 = dayTex();
   const back = new THREE.Mesh(new THREE.PlaneGeometry(14, 7), new THREE.MeshBasicMaterial({ map: nt, fog: false }));
   back.position.set(0, 1.6, -4.2); scene.add(back);
   const side = new THREE.Mesh(new THREE.PlaneGeometry(14, 7), new THREE.MeshBasicMaterial({ map: nt, fog: false }));
@@ -111,6 +133,45 @@ export function buildRoomView(container, { low, onReady, onPick, canInteract = (
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
 
+  // ── 낮·밤 ──
+  let shadeOn = null, shadeOff = null, shadeMesh = null, lampGlow = null, starGlow = null;
+  // 낮 햇빛이 창살 모양으로 바닥에 드리우는 빛
+  const patchTex = canvasTex(256, 256, (ctx, w, h) => {
+    const cw = w / 2, ch = h / 3;
+    for (let i = 0; i < 2; i++) for (let j = 0; j < 3; j++) {
+      const g = ctx.createLinearGradient(0, j * ch, 0, (j + 1) * ch); g.addColorStop(0, 'rgba(255,246,225,.9)'); g.addColorStop(1, 'rgba(255,240,210,.65)');
+      ctx.fillStyle = g; ctx.fillRect(i * cw + 6, j * ch + 6, cw - 12, ch - 12);
+    }
+    ctx.globalCompositeOperation = 'destination-in';
+    const f = ctx.createLinearGradient(0, 0, 0, h); f.addColorStop(0, 'rgba(0,0,0,1)'); f.addColorStop(1, 'rgba(0,0,0,.15)');
+    ctx.fillStyle = f; ctx.fillRect(0, 0, w, h);
+  });
+  const patch = new THREE.Mesh(new THREE.PlaneGeometry(1.25, 1.9), new THREE.MeshBasicMaterial({ map: patchTex, transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending }));
+  patch.rotation.x = -Math.PI / 2; patch.rotation.z = 0.12; patch.position.set(1.62, 0.012, -1.75); patch.visible = false; scene.add(patch);
+  const fade = document.createElement('div'); fade.className = 'room-fade'; container.append(fade);
+  let timeMode = 'night';
+  function applyTime(mode) {
+    timeMode = mode; const day = mode === 'day';
+    hemi.intensity = day ? 1.15 : 0.08; hemi.color.set(day ? '#eef3ff' : '#ffcf9e'); hemi.groundColor.set(day ? '#8c6e52' : '#2b1a10');
+    moon.color.set(day ? '#fff1dc' : '#7f9cff'); moon.intensity = day ? 1.7 : 0.22; moon.position.set(day ? 3 : 4, day ? 6 : 5, day ? -8 : -6);
+    fireBase = day ? 2.2 : 4.8; treeL.intensity = day ? 0.5 : 1.7;
+    lampDown.intensity = day ? 0 : 3.2; lampUp.intensity = day ? 0 : 1.4; lampFill.intensity = day ? 0 : 0.18;
+    if (shadeMesh) shadeMesh.material = day ? shadeOff : shadeOn;
+    if (lampGlow) lampGlow.visible = !day;
+    if (starGlow) starGlow.material.opacity = day ? 0.25 : 0.5;
+    renderer.toneMappingExposure = day ? 1.0 : 0.9; bloom.strength = day ? 0.18 : (low ? 0.35 : 0.45);
+    back.material.map = side.material.map = day ? dt2 : nt; back.material.needsUpdate = side.material.needsUpdate = true;
+    scene.background.set(day ? '#cfe0f5' : '#05070f');
+    snow.material.color.set(day ? '#ffffff' : '#f2f6ff'); snow.material.opacity = day ? 0.85 : 1;
+    patch.visible = day;
+    document.body.classList.toggle('day', day);
+  }
+  function setTime(mode) {
+    if (mode === timeMode) return;
+    fade.classList.add('on');
+    setTimeout(() => { applyTime(mode); fade.classList.remove('on'); }, 380);
+  }
+
   // ── 모델 로드 ──
   const loader = new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
   const glow = (color, size, opacity = 1) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity })); s.scale.setScalar(size); return s; };
@@ -140,7 +201,9 @@ export function buildRoomView(container, { low, onReady, onPick, canInteract = (
       if (name === 'Color_A02' || name === '_Color_A03_10') { o.material = m.clone(); o.material.color.multiplyScalar(0.35); }
       if (name === '_Color_A03_28') { // 스탠드 전등 갓: 안에서 불이 켜진 것처럼
         // 조명 계산에서 빼고(가까운 광원에 하얗게 타는 것 방지) 은은한 주황빛으로만
-        o.material = new THREE.MeshBasicMaterial({ map: m.map || null, color: '#e3ad6a', side: THREE.DoubleSide });
+        shadeOff = m; shadeMesh = o;
+        shadeOn = new THREE.MeshBasicMaterial({ map: m.map || null, color: '#dfa462', side: THREE.DoubleSide });
+        o.material = shadeOn;
       }
       if (name === '_Color_A03_') o.visible = false; // 트리 옆 사각 빛 평면은 어색해서 숨김
       if (name === '__') { o.material = new THREE.MeshBasicMaterial({ map: m.map, transparent: true, depthWrite: false, opacity: 0.35, side: THREE.DoubleSide }); }
@@ -194,10 +257,11 @@ export function buildRoomView(container, { low, onReady, onPick, canInteract = (
     });
     // 은은한 후광: 벽난로, 트리 꼭대기, 스탠드
     const fg = glow('#ff8a3a', 1.3, 0.35); fg.position.copy(SPOT.fire).add(new THREE.Vector3(0, 0.05, 0.25)); scene.add(fg);
-    const lgd = glow('#ffb860', 0.5, 0.09); lgd.position.copy(SPOT.lamp).add(new THREE.Vector3(0.05, -0.35, 0)); scene.add(lgd);
-    const tg = glow('#ffcf7a', 0.7, 0.4); tg.position.set(SPOT.tree.x, 2.5, SPOT.tree.z); scene.add(tg);
+    const lgd = glow('#ffcf8a', 0.42, 0.5); lgd.position.copy(SPOT.lamp).add(new THREE.Vector3(0, -0.13, 0)); scene.add(lgd); // 갓 아래로 보이는 전구 빛
+    lampGlow = lgd;
+    const tg = glow('#ffd98a', 0.5, 0.5); tg.position.copy(SPOT.star); scene.add(tg); starGlow = tg;
     updaters.push((dt, t) => {
-      fire.intensity = 4.8 + Math.sin(t * 11) * 0.8 + Math.sin(t * 27) * 0.5;
+      fire.intensity = fireBase + Math.sin(t * 11) * fireBase * 0.17 + Math.sin(t * 27) * fireBase * 0.1;
       fg.material.opacity = 0.32 + Math.sin(t * 9) * 0.06;
     });
     // 앞쪽 벽: 모델에 없어서 뒷벽과 같은 벽지 재질로 막음
@@ -213,6 +277,7 @@ export function buildRoomView(container, { low, onReady, onPick, canInteract = (
     // 롤링페이퍼 장식
     ornaments = new RoomOrnaments(scene, new THREE.Vector3(SPOT.tree.x, 0, SPOT.tree.z), treeVerts);
     if (pendingItems) ornaments.sync(pendingItems);
+    applyTime(timeMode);
     updaters.push((dt) => ornaments.update(dt));
     console.info('[room] tree/mantel/swag verts', treeVerts.length, mantelVerts.length, swagVerts.length, 'slots', ornaments.slots.length);
     if (new URLSearchParams(location.search).has('debug')) window.__room = { scene, camera, root, THREE };
@@ -257,5 +322,6 @@ export function buildRoomView(container, { low, onReady, onPick, canInteract = (
     highlight(id) { if (!ornaments) return; const p = ornaments.worldPos(id); if (!p) return; ornaments.highlight(id); walker.focusOn(p, ornaments.outward(id)); },
     unfocus() { ornaments?.clear(); walker.unfocus(); },
     setEnabled(v) { walker.enabled = v; if (!v) walker.keys.clear(); },
+    setTime, applyTime, get time() { return timeMode; },
   };
 }
