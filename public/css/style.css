@@ -1,14 +1,16 @@
 :root {
-  --ink: #fbf3e6;
-  --ink-dim: rgba(251, 243, 230, 0.7);
-  --panel: rgba(36, 20, 14, 0.78);
-  --panel-solid: #2a1810;
-  --line: rgba(255, 230, 200, 0.16);
-  --gold: #f0c35a;
-  --red: #b3202a;
-  --green: #1f5a3a;
-  --paper: #fbf5e8;
-  --paper-ink: #3a2418;
+  /* 팔레트: 레퍼런스 사진의 와인 레드 · 크림 · 앤틱 골드 · 깊은 브라운 */
+  --ink: #f6eee2;
+  --ink-dim: rgba(246, 238, 226, 0.68);
+  --panel: rgba(32, 22, 17, 0.62);
+  --panel-solid: #2b1e17;
+  --line: rgba(240, 220, 190, 0.18);
+  --gold: #d9b56a;
+  --red: #8e1b24;
+  --red-deep: #5c1118;
+  --green: #3b4a2c;
+  --paper: #f7f0e4;
+  --paper-ink: #3b2a20;
   --font: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
   --serif: "Nanum Myeongjo", "Noto Serif KR", Georgia, serif;
   color-scheme: dark;
@@ -28,13 +30,13 @@ textarea { resize: vertical; min-height: 90px; }
 .btn { border: 1px solid var(--line); background: rgba(255, 255, 255, 0.08); padding: 9px 14px; border-radius: 10px; white-space: nowrap; }
 .btn:hover { background: rgba(255, 255, 255, 0.15); }
 .btn:active { transform: scale(0.97); }
-.btn-primary { background: linear-gradient(180deg, #d63a3f, #a3162a); color: #fff; border-color: rgba(255, 220, 160, 0.35); font-weight: 700; box-shadow: 0 6px 20px rgba(163, 22, 42, 0.45); }
-.btn-primary:hover { background: linear-gradient(180deg, #e04a4f, #b31e32); }
+.btn-primary { background: linear-gradient(180deg, #9e2430, #741520); color: #fbf3e6; border-color: rgba(217, 181, 106, 0.55); font-weight: 700; box-shadow: 0 6px 22px rgba(60, 10, 15, 0.45), inset 0 1px 0 rgba(255, 220, 170, .25); }
+.btn-primary:hover { background: linear-gradient(180deg, #aa2a37, #801924); }
 .btn-primary:disabled { opacity: .6; }
 .btn-ghost { background: transparent; }
 .btn-lg { width: 100%; padding: 13px; font-size: 16px; border-radius: 12px; margin-top: 10px; }
 .btn-danger { color: #ffb3ad; border-color: rgba(255, 120, 110, 0.35); }
-.icon-btn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); font-size: 18px; display: inline-grid; place-items: center; }
+.icon-btn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); background: var(--panel); font-size: 18px; display: inline-grid; place-items: center; }
 
 .loading { position: fixed; inset: 0; display: grid; place-content: center; text-align: center; background: radial-gradient(circle at 50% 45%, #4a2414, #120a08 70%); z-index: 50; transition: opacity .6s; }
 .loading p { color: var(--ink-dim); }
@@ -51,7 +53,7 @@ textarea { resize: vertical; min-height: 90px; }
 .hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
 .hud-top { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .hud-top > *, .hud-bottom > button { pointer-events: auto; }
-.brand { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.brand { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .brand strong { font-family: var(--serif); font-size: 17px; }
 .brand-meta { font-size: 12px; color: var(--ink-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .seal-badge { font-size: 12px; color: var(--gold); }
@@ -81,7 +83,7 @@ textarea { resize: vertical; min-height: 90px; }
 
 /* 크리스마스 카드 (아래쪽에 띄워 위에서 장식이 보이도록) */
 #card-modal { place-items: end center; padding-bottom: max(20px, env(safe-area-inset-bottom)); background: rgba(10, 5, 3, .15); }
-.xcard { position: relative; width: min(400px, 100%); background: var(--paper); color: var(--paper-ink); border-radius: 14px; padding: 26px 24px 18px; text-align: center; box-shadow: 0 24px 60px rgba(0, 0, 0, .55); outline: 3px dashed rgba(179, 32, 42, .5); outline-offset: -10px; }
+.xcard { position: relative; width: min(400px, 100%); background: var(--paper); color: var(--paper-ink); border-radius: 16px; padding: 26px 24px 18px; text-align: center; box-shadow: 0 24px 60px rgba(0, 0, 0, .55); border-top: 5px solid var(--red); background-image: radial-gradient(rgba(140, 100, 60, .07) 1px, transparent 1px); background-size: 7px 7px; }
 .xcard .close { position: absolute; top: 10px; right: 10px; color: var(--paper-ink); border-color: rgba(58, 36, 24, .2); }
 .xcard-icon { font-size: 40px; }
 .xcard-to { margin: 2px 0 10px; font-size: 13px; color: var(--red); font-weight: 700; letter-spacing: .05em; }
@@ -123,3 +125,32 @@ textarea { resize: vertical; min-height: 90px; }
   .icon-btn { width: 36px; height: 36px; font-size: 16px; }
   .toasts { top: 76px; }
 }
+
+/* ── 사진 배경 모드 ── */
+.photo-root { position: fixed; inset: 0; overflow: hidden; background: #1b120d; }
+.photo-bg { position: absolute; inset: -40px; background-size: cover; background-position: center; filter: blur(28px) brightness(.55) saturate(1.1); transform: scale(1.1); }
+.photo-stage { position: absolute; }
+.photo-img { position: absolute; inset: 0; width: 100%; height: 100%; user-select: none; -webkit-user-drag: none;
+  -webkit-mask-image: radial-gradient(ellipse closest-side at 50% 50%, #000 80%, transparent 100%); mask-image: radial-gradient(ellipse closest-side at 50% 50%, #000 80%, transparent 100%); }
+.photo-fx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.photo-glows { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; }
+.glow { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle, rgba(var(--c), .55), rgba(var(--c), 0) 70%); animation: flicker 2.2s ease-in-out infinite; }
+.glow-fire { animation: flame 0.9s ease-in-out infinite alternate; }
+.glow-candle { animation: flicker 1.3s ease-in-out infinite; }
+.glow-star { animation: breathe 3s ease-in-out infinite; }
+@keyframes flicker { 0%, 100% { opacity: .75; transform: translate(-50%, -50%) scale(1); } 40% { opacity: 1; transform: translate(-50%, -52%) scale(1.06); } 70% { opacity: .85; } }
+@keyframes flame { from { opacity: .55; transform: translate(-50%, -50%) scale(.96); } to { opacity: 1; transform: translate(-50%, -51%) scale(1.05); } }
+@keyframes breathe { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+.photo-orns { position: absolute; inset: 0; }
+.orn { position: absolute; width: var(--orn); height: var(--orn); padding: 0; border: 0; background: none; transform: translate(-50%, -30%) rotate(var(--tilt)); transform-origin: 50% 0; cursor: pointer;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .45)); animation: sway var(--sway) ease-in-out infinite alternate; transition: filter .2s; }
+.orn svg { width: 100%; height: 100%; display: block; }
+.orn::before { content: ""; position: absolute; left: 50%; top: -28%; width: 1px; height: 30%; background: rgba(217, 181, 106, .8); }
+.orn.on-floor { transform: translate(-50%, -70%); animation: none; width: calc(var(--orn) * 1.25); height: calc(var(--orn) * 1.25); }
+.orn.on-floor::before { display: none; }
+.orn:hover, .orn:focus-visible { filter: drop-shadow(0 0 10px rgba(255, 215, 140, .95)) drop-shadow(0 3px 4px rgba(0, 0, 0, .45)); outline: none; }
+.orn.selected { filter: drop-shadow(0 0 14px rgba(255, 220, 150, 1)) drop-shadow(0 0 4px #fff); }
+.orn.pulse svg { animation: pop 0.8s ease 3; }
+@keyframes sway { from { rotate: -3deg; } to { rotate: 3deg; } }
+@keyframes pop { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
+body.photo-mode #app { cursor: default; }
