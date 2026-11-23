@@ -63,7 +63,7 @@ export function buildRoomView(container, { low, onReady, onPick, canInteract = (
   const moon = new THREE.DirectionalLight('#7f9cff', 0.22); moon.position.set(4, 5, -6); scene.add(moon);
   const fire = new THREE.PointLight('#ff7a2c', 5, 0, 2); fire.position.copy(SPOT.fire).add(new THREE.Vector3(0, 0.1, 0.45)); scene.add(fire);
   const treeL = new THREE.PointLight('#ffc477', 1.7, 0, 2); treeL.position.copy(SPOT.tree).add(new THREE.Vector3(0.55, 1.5, 1.25)); scene.add(treeL);
-  const lamp = new THREE.PointLight('#ffc98a', 2.1, 0, 2); lamp.position.copy(SPOT.lamp).add(new THREE.Vector3(0.12, -0.02, 0)); scene.add(lamp);
+  const lamp = new THREE.PointLight('#ffc98a', 0.8, 0, 2); lamp.position.copy(SPOT.lamp).add(new THREE.Vector3(0.3, -0.25, 0)); // 벽에서 조금 띄워 벽이 하얗게 타지 않게 scene.add(lamp);
 
   // ── 창밖 밤 풍경 + 눈 ──
   const nt = nightTex();
@@ -139,7 +139,8 @@ export function buildRoomView(container, { low, onReady, onPick, canInteract = (
       }
       if (name === 'Color_A02' || name === '_Color_A03_10') { o.material = m.clone(); o.material.color.multiplyScalar(0.35); }
       if (name === '_Color_A03_28') { // 스탠드 전등 갓: 안에서 불이 켜진 것처럼
-        o.material = new THREE.MeshStandardMaterial({ map: m.map || null, color: '#fff1d6', emissive: '#ffbf73', emissiveIntensity: 0.35, roughness: 0.9, side: THREE.DoubleSide });
+        // 조명 계산에서 빼고(가까운 광원에 하얗게 타는 것 방지) 은은한 주황빛으로만
+        o.material = new THREE.MeshBasicMaterial({ map: m.map || null, color: '#e3ad6a', side: THREE.DoubleSide });
       }
       if (name === '_Color_A03_') o.visible = false; // 트리 옆 사각 빛 평면은 어색해서 숨김
       if (name === '__') { o.material = new THREE.MeshBasicMaterial({ map: m.map, transparent: true, depthWrite: false, opacity: 0.35, side: THREE.DoubleSide }); }
@@ -193,8 +194,7 @@ export function buildRoomView(container, { low, onReady, onPick, canInteract = (
     });
     // 은은한 후광: 벽난로, 트리 꼭대기, 스탠드
     const fg = glow('#ff8a3a', 1.3, 0.35); fg.position.copy(SPOT.fire).add(new THREE.Vector3(0, 0.05, 0.25)); scene.add(fg);
-    const lg2 = glow('#ffc070', 0.55, 0.12); lg2.position.copy(SPOT.lamp); scene.add(lg2);
-    const lgd = glow('#ffb860', 0.6, 0.12); lgd.position.copy(SPOT.lamp).add(new THREE.Vector3(0.05, -0.35, 0)); scene.add(lgd);
+    const lgd = glow('#ffb860', 0.5, 0.09); lgd.position.copy(SPOT.lamp).add(new THREE.Vector3(0.05, -0.35, 0)); scene.add(lgd);
     const tg = glow('#ffcf7a', 0.7, 0.4); tg.position.set(SPOT.tree.x, 2.5, SPOT.tree.z); scene.add(tg);
     updaters.push((dt, t) => {
       fire.intensity = 4.8 + Math.sin(t * 11) * 0.8 + Math.sin(t * 27) * 0.5;
