@@ -226,3 +226,12 @@ body.room-mode #btn-time { display: inline-grid; }
 body.bye #app canvas { filter: brightness(.25) blur(3px); transition: filter 1.4s ease; }
 
 #bye h1, .entry-card h1 { word-break: keep-all; text-wrap: balance; }
+
+/* 마을 목록 */
+#btn-village { display: none; }
+body.auth #btn-village { display: inline-grid; }
+.village-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.village-row.here { border-color: var(--gold); }
+.v-name { font-size: 15px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.v-count { font-size: 12.5px; color: var(--ink-dim); white-space: nowrap; }
+body.gate .entry-card .sub { font-size: 16px; color: var(--ink); margin-bottom: 4px; }

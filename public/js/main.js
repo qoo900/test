@@ -13,6 +13,8 @@ const low = CONFIG.isTouch || (navigator.deviceMemory && navigator.deviceMemory 
 if (CONFIG.isTouch) document.body.classList.add('touch');
 let view = null; let nearTree = false; let nearDoor = false;
 let api; let state = { items: [], settings: {}, sealed: false }; const me = { name: '' }; let entered = false;
+let myInfo = null; let myRoom = null; // 서버 모드: 입장 토큰의 주인과 그 사람의 방
+const isMine = () => !myRoom || api.room === myRoom;
 const owner = () => state.settings.owner || '친구';
 const visibleItems = () => state.items.filter((it) => it.status === 'visible');
 const sig = (items) => items.map((i) => `${i.id}:${i.status}:${i.message ? 1 : 0}`).join('|');
@@ -43,7 +45,7 @@ $('#card-modal').addEventListener('closed', () => { if (!anyModalOpen()) view.un
 modalState.onChange = (open) => view?.setEnabled?.(!open);
 
 const compose = setupCompose({
-  getDefaults: () => ({ name: me.name, owner: owner(), sealed: state.sealed, sealUntil: state.settings.sealUntil }),
+  getDefaults: () => ({ name: me.name, lockName: !!myInfo, owner: owner(), sealed: state.sealed, sealUntil: state.settings.sealUntil }),
   onSubmit: async (input) => {
     const item = await api.addItem(input);
     applyState({ ...state, items: [...state.items, item] });
@@ -67,8 +69,9 @@ function syncNearUi() {
 }
 $('#btn-compose').addEventListener('click', () => compose.open());
 // 현관문: 나가기 확인 → 나간 뒤 화면 → 다시 들어가기
-$('#btn-exit').addEventListener('click', () => { $('#exit-title').textContent = `${owner()}님의 방에서 나가시겠습니까?`; openModal('exit-modal'); });
+$('#btn-exit').addEventListener('click', () => { $('#exit-title').textContent = isMine() ? '내 오두막에서 나가 마을로 갈까요?' : `${owner()}님의 방에서 나가시겠습니까?`; openModal('exit-modal'); });
 $('#exit-confirm').addEventListener('click', () => {
+  if (api.mode === 'server' && myInfo) { closeModal('exit-modal'); openVillage(); return; }
   closeModal('exit-modal'); sound.stopMusic(); sound.ctx?.suspend?.(); view.setEnabled?.(false);
   document.body.classList.add('bye'); $('#hud').hidden = true; $('#btn-exit').hidden = true;
   $('#bye-title').textContent = `${owner()}님의 방을 나왔어요`; $('#bye').hidden = false; entered = false;
@@ -81,6 +84,41 @@ $('#bye-back').addEventListener('click', () => {
 // 트리 근처에서: 최근 메시지부터 카드로 (이전/다음으로 넘기기)
 $('#btn-read').addEventListener('click', () => { const l = visibleItems().sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)); if (l.length) openItem(l[0].id); else toast('아직 받은 메시지가 없어요. 첫 선물을 놓아 보세요 🎁'); });
 $('#btn-list').addEventListener('click', () => list.open());
+
+// ── 마을: 동료들의 오두막 목록 ──
+const goRoom = (id) => { const q = new URLSearchParams(location.search); if (id === myRoom) q.delete('room'); else q.set('room', id); location.search = q.toString(); };
+async function openVillage() {
+  openModal('village-modal');
+  const ul = $('#village-list'); ul.innerHTML = '<li class="muted">마을을 불러오는 중…</li>';
+  try {
+    const rooms = await api.village();
+    const render = () => {
+      const q = $('#village-search').value.trim().toLowerCase();
+      const rows = rooms.filter((r) => !q || r.name.toLowerCase().includes(q))
+        .sort((a, b) => (a.id === myRoom ? -1 : b.id === myRoom ? 1 : a.name.localeCompare(b.name, 'ko')));
+      ul.replaceChildren(...rows.map((r) => {
+        const li = document.createElement('li'); li.className = 'clickable village-row' + (r.id === api.room ? ' here' : '');
+        const nm = document.createElement('span'); nm.className = 'v-name'; nm.textContent = (r.id === myRoom ? '🏠 ' : '🎄 ') + r.name + (r.id === myRoom ? ' (내 오두막)' : '');
+        const ct = document.createElement('span'); ct.className = 'v-count'; ct.textContent = r.count ? `🎁 ${r.count}` : '아직 선물 없음';
+        li.append(nm, ct); li.addEventListener('click', () => goRoom(r.id)); return li;
+      }));
+      if (!rows.length) ul.innerHTML = '<li class="muted">찾는 동료가 없어요. 아직 /산타 를 입력하지 않았을 수 있어요.</li>';
+    };
+    $('#village-search').oninput = render; render();
+    $('#village-count').textContent = `오두막 ${rooms.length}채`;
+  } catch (e) { ul.innerHTML = `<li class="muted">${e.message}</li>`; }
+}
+$('#btn-village').addEventListener('click', openVillage);
+$('#village-home').addEventListener('click', () => goRoom(myRoom));
+
+// 입장 링크가 없을 때
+function showGate() {
+  $('#entry').hidden = false; document.body.classList.add('gate');
+  $('#entry-title').textContent = '우리의 소원트리';
+  $('#entry .sub').textContent = '슬랙에서 /산타 를 입력하면 내 오두막 입장 링크가 도착해요 🎄';
+  ['#entry-name', '#enter-btn', '#entry .field-label', '#entry .small'].forEach((q) => { const e = $(q); if (e) e.hidden = true; });
+  setTimeout(() => { $('#loading').style.opacity = '0'; setTimeout(() => $('#loading')?.remove(), 600); }, 150);
+}
 const soundBtn = $('#btn-sound');
 const syncSound = () => { soundBtn.textContent = sound.muted ? '🔇' : '🔊'; };
 soundBtn.addEventListener('click', () => { sound.init(); sound.setMuted(!sound.muted); syncSound(); }); syncSound();
@@ -125,14 +163,22 @@ addEventListener('keydown', (e) => {
     const { build3DView } = await import('./view3d.js'); // 3D 코드는 필요할 때만 로드
     view = build3DView(app, { low, onPick: openItem, canInteract: () => entered && !anyModalOpen() });
   }
-  try { applyState(await api.getState()); view.sync(state.items); } catch (e) { toast(`⚠️ 데이터를 불러오지 못했어요: ${e.message}`); }
+  // 서버 모드(슬랙 입장): 입장 링크 확인 → 내 방 / 주소로 지정한 방
+  if (api.mode === 'server' && api.requiresAuth) {
+    myInfo = await api.me();
+    if (!myInfo) { showGate(); return; }
+    me.name = myInfo.user.name; myRoom = myInfo.room;
+    api.room = CONFIG.roomParam || myRoom;
+    document.body.classList.add('auth');
+  }
+  try { applyState(await api.getState()); view.sync(state.items); } catch (e) { toast(`⚠️ 방을 불러오지 못했어요: ${e.message}`); }
   setTimeout(() => { $('#loading').style.opacity = '0'; setTimeout(() => $('#loading').remove(), 600); }, 150);
   const admin = setupAdmin({ api, onStateChange: refresh });
   $('#btn-admin').addEventListener('click', () => admin.open());
   setupEntry({
-    owner: owner(), defaultName: CONFIG.user,
+    owner: owner(), defaultName: myInfo ? me.name : CONFIG.user, locked: !!myInfo, mine: isMine(),
     onEnter: ({ name }) => {
-      me.name = name; entered = true; sound.init();
+      me.name = myInfo ? me.name : name; entered = true; sound.init();
       document.body.classList.add('entered');
       syncNearUi();
       if (musicPref) setTimeout(() => sound.startMusic(), 1500);

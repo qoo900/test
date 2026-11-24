@@ -15,15 +15,20 @@ class ServerApi {
     this.adminPassword = null;
   }
   url(p) { return `${this.base}/api/rooms/${encodeURIComponent(this.room)}${p}`; }
-  async req(path, opts = {}) {
+  async req(path, opts = {}, absolute = false) {
     const headers = { 'Content-Type': 'application/json' };
     if (this.adminPassword) headers['X-Admin-Password'] = this.adminPassword;
-    const res = await fetch(this.url(path), { ...opts, headers: { ...headers, ...opts.headers } });
+    if (CONFIG.token) headers.Authorization = `Bearer ${CONFIG.token}`;
+    const res = await fetch(absolute ? `${this.base}/api/${path}` : this.url(path), { ...opts, headers: { ...headers, ...opts.headers } });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error || `요청 실패 (${res.status})`);
     return body;
   }
   getState({ admin = false } = {}) { return this.req(`/state${admin ? '?admin=1' : ''}`); }
+  // 내 정보 (입장 토큰 확인 + 내 방 만들기). 토큰이 없거나 만료면 null
+  async me() { try { return await this.req('me', {}, true); } catch { return null; } }
+  village() { return this.req('village', {}, true).then((r) => r.rooms); }
+  adminInvite(name) { return this.req('admin/invite', { method: 'POST', body: JSON.stringify({ name }) }, true); }
   addItem(input) { return this.req('/items', { method: 'POST', body: JSON.stringify(input) }).then((r) => r.item); }
   async adminLogin(password) {
     this.adminPassword = password;
@@ -67,6 +72,9 @@ class LocalApi {
     return { room: this.room, settings: { ...this.data.settings }, sealed, items, serverTime: new Date().toISOString() };
   }
   async getState({ admin = false } = {}) { return this.state(admin && this.isAdmin); }
+  async me() { return null; }
+  async village() { return []; }
+  async adminInvite() { throw new Error('로컬 모드에서는 초대 링크를 만들 수 없어요.'); }
   async addItem(input) {
     const { value, error } = validateNewItem(input);
     if (error) throw new Error(error);
@@ -99,7 +107,8 @@ export async function createApi() {
       const timer = setTimeout(() => ctrl.abort(), 2500);
       const res = await fetch(`${CONFIG.apiBase}/api/health`, { signal: ctrl.signal });
       clearTimeout(timer);
-      if (res.ok && (await res.json()).ok) return new ServerApi(CONFIG.apiBase, CONFIG.room);
+      const h = res.ok ? await res.json() : null;
+      if (h?.ok) { const a = new ServerApi(CONFIG.apiBase, CONFIG.room); a.requiresAuth = h.auth === 'token'; return a; }
     } catch { /* fall through */ }
   }
   console.info('[api] 서버를 찾지 못해 로컬 모드(localStorage)로 실행합니다.');

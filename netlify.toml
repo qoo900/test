@@ -1,0 +1,14 @@
+# Netlify 배포 설정: GitHub 저장소를 연결하면 이 파일대로 배포돼요
+[build]
+  publish = "public"
+  command = "echo 'static site + functions'"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# 3D 모델·엔진 파일은 오래 캐시
+[[headers]]
+  for = "/vendor/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"

@@ -36,6 +36,7 @@
         <span id="hud-seal" class="seal-badge" hidden></span>
       </div>
       <div class="hud-buttons">
+        <button class="icon-btn" id="btn-village" aria-label="마을 둘러보기" title="마을 둘러보기">🏘️</button>
         <button class="icon-btn" id="btn-time" aria-label="낮/밤 바꾸기" title="낮/밤 바꾸기">🌙</button>
         <button class="icon-btn" id="btn-music" aria-label="캐럴 켜기/끄기">🎵</button>
         <button class="icon-btn" id="btn-sound" aria-label="소리 켜기/끄기">🔊</button>
@@ -55,6 +56,17 @@
 
   <div id="joystick" class="joystick"><div class="knob"></div></div>
   <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <!-- 마을 -->
+  <div class="modal drawer-wrap" id="village-modal" hidden>
+    <aside class="drawer">
+      <header class="sheet-head"><h2>🏘️ 마을 <span class="muted small" id="village-count"></span></h2><button type="button" class="icon-btn close" data-close aria-label="닫기">✕</button></header>
+      <p class="muted small">동료의 오두막을 눌러 놀러 가 보세요. 트리 아래 선물이 많이 쌓인 곳도 있어요.</p>
+      <input type="search" id="village-search" placeholder="이름으로 찾기" />
+      <ul class="list" id="village-list"></ul>
+      <button class="btn btn-primary" id="village-home">🏠 내 오두막으로 돌아가기</button>
+    </aside>
+  </div>
 
   <!-- 나가기 확인 -->
   <div class="modal" id="exit-modal" hidden>
@@ -126,6 +138,12 @@
         <p class="muted small" id="admin-mode-note"></p>
       </form>
       <div id="admin-body" hidden>
+        <section class="admin-section" id="invite-section">
+          <h3>테스트 입장 링크</h3>
+          <p class="muted small">슬랙 연결 전이나 슬랙을 안 쓰는 분에게, 이름만으로 그 사람 오두막 입장 링크를 만들어 드려요. 링크는 본인에게만 전달하세요.</p>
+          <div class="row"><input id="invite-name" type="text" maxlength="20" placeholder="이름 (예: 홍길동)" class="grow" /><button class="btn" id="invite-make">만들기</button></div>
+          <textarea id="invite-link" rows="2" readonly hidden></textarea>
+        </section>
         <section class="admin-section">
           <h3>봉인 모드</h3>
           <label class="switch"><input type="checkbox" id="seal-toggle" /> <span>지정일 전까지 메시지 잠그기</span></label>

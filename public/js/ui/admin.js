@@ -78,6 +78,14 @@ export function setupAdmin({ api, onStateChange }) {
   });
   $('#seal-toggle').addEventListener('change', () => $('#seal-save').click());
 
+  $('#invite-section').hidden = api.mode !== 'server';
+  $('#invite-make').addEventListener('click', async () => {
+    try {
+      const { link } = await api.adminInvite($('#invite-name').value);
+      const box = $('#invite-link'); box.value = link; box.hidden = false; box.select();
+      try { await navigator.clipboard.writeText(link); toast('입장 링크를 복사했어요'); } catch { toast('링크를 길게 눌러 복사해 주세요'); }
+    } catch (e) { toast(`⚠️ ${e.message}`); }
+  });
   $('#admin-logout').addEventListener('click', () => { api.adminLogout(); state = null; body.hidden = true; login.hidden = false; toast('로그아웃했어요'); });
 
   $('#admin-export').addEventListener('click', () => {

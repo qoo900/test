@@ -39,11 +39,16 @@ document.addEventListener('click', (e) => {
 });
 
 // ── 입장 ──
-export function setupEntry({ owner, defaultName, onEnter }) {
+export function setupEntry({ owner, defaultName, onEnter, locked = false, mine = false }) {
   let saved = '';
   try { saved = localStorage.getItem('tree-name') || ''; } catch { /* ignore */ }
-  $('#entry-title').textContent = `${owner}님의 오두막`;
+  $('#entry-title').textContent = mine ? `${owner}님의 오두막` : `${owner}님의 오두막`;
+  if (locked) {
+    $('#entry .sub').textContent = mine ? '내 트리 아래에 동료들의 선물이 쌓여요. 마을에서 동료의 오두막도 찾아가 보세요 🎄' : `${owner}님 트리 아래에 마음을 담은 선물을 놓고 가세요 🎁`;
+    const lbl = $('#entry .field-label'); if (lbl) lbl.hidden = true;
+  }
   const input = $('#entry-name'); input.value = defaultName || saved;
+  if (locked) { input.readOnly = true; input.classList.add('locked'); $('#enter-btn').textContent = `${defaultName}(으)로 들어가기`; input.hidden = true; }
   const enter = () => {
     const name = input.value.trim().slice(0, LIMITS.authorMax);
     try { localStorage.setItem('tree-name', name); } catch { /* ignore */ }
@@ -87,7 +92,8 @@ export function setupCompose({ getDefaults, onSubmit }) {
     open() {
       const d = getDefaults();
       $('#compose-title').textContent = `${d.owner}님 트리 아래 선물 놓기`;
-      if (!author.value) author.value = d.name || '';
+      if (!author.value || d.lockName) author.value = d.name || '';
+      author.readOnly = !!d.lockName;
       const note = $('#c-seal-note'); note.hidden = !d.sealed;
       if (d.sealed) note.textContent = `🔒 메시지는 ${formatDate(d.sealUntil)}에 열려요.`;
       err.hidden = true; openModal('compose-modal');
