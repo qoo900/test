@@ -80,6 +80,24 @@ export function setupAdmin({ api, onStateChange }) {
 
   $('#invite-section').hidden = api.mode !== 'server';
   $('#sync-section').hidden = api.mode !== 'server';
+  $('#send-section').hidden = api.mode !== 'server';
+  $('#send-test').addEventListener('click', async () => {
+    try { const r = await api.adminSendLinks({ testName: $('#send-test-name').value.trim() }); toast(r.sent ? '📨 테스트 DM을 보냈어요' : `⚠️ 보내지 못했어요 ${r.failed.join(', ') || '(이름을 찾을 수 없어요)'}`); }
+    catch (e) { toast(`⚠️ ${e.message}`); }
+  });
+  // 25명씩 나눠 끝까지 보내기
+  $('#send-all').addEventListener('click', async (e) => {
+    const btn = e.target; const st = $('#send-status'); btn.disabled = true; let total = 0; const fails = [];
+    try {
+      for (let guard = 0; guard < 20; guard++) {
+        const r = await api.adminSendLinks({ onlyUnsent: true });
+        total += r.sent; fails.push(...r.failed); st.textContent = `보낸 사람 ${total}명 · 남은 사람 ${r.left}명${fails.length ? ` · 실패 ${fails.length}명` : ''}`;
+        if (!r.left || (!r.sent && r.failed.length)) break;
+      }
+      toast(`📨 ${total}명에게 입장 링크를 보냈어요`);
+      if (fails.length) st.textContent += ` (실패: ${fails.join(', ')})`;
+    } catch (ex) { toast(`⚠️ ${ex.message}`); } finally { btn.disabled = false; }
+  });
   $('#sync-slack').addEventListener('click', async (e) => {
     e.target.disabled = true; e.target.textContent = '만드는 중…';
     try { const r = await api.adminSyncSlack(); toast(`🏘️ 오두막 ${r.rooms}채를 준비했어요`); }

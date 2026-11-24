@@ -145,6 +145,13 @@
           <p class="muted small">회사 슬랙 멤버 전원(봇·게스트 제외)의 오두막을 한 번에 만들어요. 새 입사자가 생기면 다시 누르면 돼요.</p>
           <button class="btn btn-primary" id="sync-slack">🏘️ 슬랙 멤버로 오두막 만들기</button>
         </section>
+        <section class="admin-section" id="send-section">
+          <h3>입장 링크 DM 보내기</h3>
+          <p class="muted small">TM봇이 각 사람에게 "내 오두막 들어가기" 버튼을 DM으로 보내요. 먼저 내 이름으로 테스트해 보고, 오픈 날 전체에게 보내세요. 이미 받은 사람에게는 다시 보내지 않아요.</p>
+          <div class="row"><input id="send-test-name" type="text" maxlength="20" placeholder="테스트 받을 이름 (슬랙 표시 이름)" class="grow" /><button class="btn" id="send-test">테스트 발송</button></div>
+          <button class="btn btn-primary" id="send-all">📨 아직 못 받은 모두에게 보내기</button>
+          <p class="muted small" id="send-status"></p>
+        </section>
         <section class="admin-section" id="invite-section">
           <h3>테스트 입장 링크</h3>
           <p class="muted small">슬랙 연결 전이나 슬랙을 안 쓰는 분에게, 이름만으로 그 사람 오두막 입장 링크를 만들어 드려요. 링크는 본인에게만 전달하세요.</p>

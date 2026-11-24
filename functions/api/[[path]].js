@@ -49,6 +49,7 @@ async function migrate(db) {
     db.prepare('CREATE INDEX IF NOT EXISTS items_room ON items(room, created_at)'),
     db.prepare('CREATE INDEX IF NOT EXISTS items_author ON items(author_id, created_at)'),
   ]);
+  try { await db.prepare('ALTER TABLE rooms ADD COLUMN link_sent_at TEXT').run(); } catch { /* 이미 있음 */ }
   ready = true;
 }
 async function upsertRoom(db, slackId, name) {
@@ -117,7 +118,7 @@ export async function onRequest({ request: req, env }) {
     const me = await readToken(env, req); const admin = isAdmin(env, req);
 
     if (parts[0] === 'me') {
-      if (!me) return json(401, { error: '입장 링크가 필요해요. 슬랙에서 /santa 를 입력해 주세요.' });
+      if (!me) return json(401, { error: '입장 링크가 필요해요. 슬랙 TM봇 DM의 [내 오두막 들어가기] 버튼으로 들어와 주세요.' });
       const exists = await db.prepare('SELECT id, name FROM rooms WHERE id = ?1').bind(roomIdOf(me.uid)).first();
       const room = exists || await upsertRoom(db, me.uid, me.name);
       return json(200, { user: { id: me.uid, name: me.name }, room: room.id });
@@ -159,12 +160,35 @@ export async function onRequest({ request: req, env }) {
         const room = await upsertRoom(db, uid, n);
         return json(200, { link: await personalLink(env, uid, n), room: room.id });
       }
+      // TM봇이 각자에게 입장 링크 DM 보내기 (Socket Mode 봇이라 슬래시 커맨드 대신 이 방식)
+      //  무료 플랜은 요청 한 번에 외부 호출 50개 제한 → 화면에서 25명씩 나눠 반복 호출
+      if (parts[1] === 'send-links' && req.method === 'POST') {
+        if (!env.SLACK_BOT_TOKEN) return json(400, { error: 'SLACK_BOT_TOKEN 환경 변수가 필요해요.' });
+        const { onlyUnsent = true, testName } = await req.json().catch(() => ({}));
+        let q = "SELECT id, name, slack_id FROM rooms WHERE slack_id IS NOT NULL AND slack_id NOT LIKE 'guest-%'";
+        if (testName) q += ' AND name = ?1'; else if (onlyUnsent) q += ' AND link_sent_at IS NULL';
+        const { results } = await (testName ? db.prepare(q + ' LIMIT 1').bind(testName) : db.prepare(q + ' ORDER BY name LIMIT 25')).all();
+        let sent = 0; const failed = [];
+        for (const r of results) {
+          const link = await personalLink(env, r.slack_id, r.name);
+          const res = await slack(env, 'chat.postMessage', { channel: r.slack_id, text: `🎄 ${r.name}님의 오두막이 준비됐어요! ${link}`,
+            blocks: [
+              { type: 'section', text: { type: 'mrkdwn', text: `*🎄 ${r.name}님의 오두막이 준비됐어요*\n벽난로가 타오르는 내 오두막 트리 아래에 동료들의 선물이 쌓여요.\n🏘️ 마을에서 동료의 오두막을 찾아가 마음을 담은 선물을 놓아 주세요.\n🎁 선물 놓기는 *12월 24일 23:59*까지예요.` } },
+              { type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: '🏠 내 오두막 들어가기' }, url: link, style: 'primary' }] },
+              { type: 'context', elements: [{ type: 'mrkdwn', text: '이 버튼은 본인 전용 입장 링크예요. 다른 사람에게 전달하지 마세요. 언제든 이 메시지에서 다시 들어올 수 있어요.' }] },
+            ] });
+          if (res?.ok) { sent++; await db.prepare('UPDATE rooms SET link_sent_at = ?1 WHERE id = ?2').bind(new Date().toISOString(), r.id).run(); }
+          else failed.push(`${r.name}(${res?.error || '실패'})`);
+        }
+        const { left } = testName ? { left: 0 } : await db.prepare("SELECT COUNT(*) AS left FROM rooms WHERE slack_id IS NOT NULL AND slack_id NOT LIKE 'guest-%' AND link_sent_at IS NULL").first();
+        return json(200, { sent, failed, left: onlyUnsent ? left : 0 });
+      }
       if (parts[1] === 'login') return json(200, { ok: true });
     }
 
     if (parts[0] !== 'rooms' || !parts[1]) return json(404, { error: 'not found' });
     const roomId = sanitizeRoom(parts[1]); const action = parts[2];
-    if (!me && !admin) return json(401, { error: '입장 링크가 필요해요. 슬랙에서 /santa 를 입력해 주세요.' });
+    if (!me && !admin) return json(401, { error: '입장 링크가 필요해요. 슬랙 TM봇 DM의 [내 오두막 들어가기] 버튼으로 들어와 주세요.' });
     const room = await db.prepare('SELECT id, name, slack_id FROM rooms WHERE id = ?1').bind(roomId).first();
     if (!room) return json(404, { error: '아직 만들어지지 않은 오두막이에요.' });
     const stateOf = async (withHidden) => {

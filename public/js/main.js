@@ -118,7 +118,7 @@ $('#village-home').addEventListener('click', () => goRoom(myRoom));
 function showGate() {
   $('#entry').hidden = false; document.body.classList.add('gate');
   $('#entry-title').textContent = '우리의 소원트리';
-  $('#entry .sub').textContent = '슬랙에서 /santa 를 입력하면 내 오두막 입장 링크가 도착해요 🎄';
+  $('#entry .sub').textContent = '슬랙 TM봇이 보낸 "🏠 내 오두막 들어가기" 버튼으로 들어와 주세요 🎄';
   ['#entry-name', '#enter-btn', '#entry .field-label', '#entry .small'].forEach((q) => { const e = $(q); if (e) e.hidden = true; });
   setTimeout(() => { $('#loading').style.opacity = '0'; setTimeout(() => $('#loading')?.remove(), 600); }, 150);
 }

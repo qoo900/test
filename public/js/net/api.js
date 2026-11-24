@@ -30,6 +30,7 @@ class ServerApi {
   village() { return this.req('village', {}, true).then((r) => r.rooms); }
   villageFull() { return this.req('village', {}, true); }
   adminSyncSlack() { return this.req('admin/sync-slack', { method: 'POST' }, true); }
+  adminSendLinks(opts) { return this.req('admin/send-links', { method: 'POST', body: JSON.stringify(opts) }, true); }
   adminInvite(name) { return this.req('admin/invite', { method: 'POST', body: JSON.stringify({ name }) }, true); }
   addItem(input) { return this.req('/items', { method: 'POST', body: JSON.stringify(input) }).then((r) => r.item); }
   async adminLogin(password) {
