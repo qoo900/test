@@ -103,7 +103,7 @@ export function setupCompose({ getDefaults, onSubmit }) {
 }
 
 // ── 카드 ──
-export function showCard(item, { owner, sealUntil, onPrev, onNext }) {
+export function showCard(item, { owner, sealUntil, onPrev, onNext, onReply }) {
   const t = ITEM_TYPES[item.type];
   $('#card-icon').textContent = t?.icon || '💌';
   $('#card-to').textContent = `To. ${owner}`;
@@ -113,6 +113,8 @@ export function showCard(item, { owner, sealUntil, onPrev, onNext }) {
   $('#card-author').textContent = authorName(item);
   $('#card-date').textContent = formatDate(item.createdAt);
   $('#card-prev').onclick = onPrev; $('#card-next').onclick = onNext;
+  const rb = $('#card-reply'); rb.hidden = !onReply; rb.onclick = onReply;
+  if (onReply) rb.textContent = `🎁 ${authorName(item)}님 오두막에 답례하러 가기`;
   openModal('card-modal');
 }
 

@@ -1,40 +1,56 @@
-# 오픈 준비 가이드 (Netlify + 슬랙)
+# 오픈 준비 가이드 (Cloudflare Pages + 슬랙)
 
-순서대로 한 번만 하면 됩니다. 이후에는 코드를 올릴 때마다 사이트가 자동으로 바뀌어요.
+순서대로 한 번만 하면 됩니다. 그다음부터는 코드를 올릴 때마다 사이트가 자동으로 바뀌어요.
+비용: 100명 규모는 Cloudflare 무료 플랜 안에서 운영할 수 있어요 (아래 "무료 한도" 참고).
 
 ## 1. GitHub 저장소를 비공개로
 
-구매한 3D 모델(`public/models/room.glb`)을 저장소에 올려야 Netlify가 배포할 수 있어요.
-저장소가 공개 상태면 모델이 누구에게나 공개되므로 먼저 비공개로 바꿉니다.
+구매한 3D 모델(`public/models/room.glb`)을 저장소에 올려야 사이트가 배포돼요. 공개 저장소에 올리면 모델이 누구에게나 공개되므로 먼저 비공개로 바꿉니다.
 
 GitHub 저장소 → Settings → General → 맨 아래 Danger Zone → Change visibility → Make private
 
-## 2. Netlify 프로젝트에 저장소 연결
+## 2. Cloudflare Pages 프로젝트 만들기
 
-1. app.netlify.com → 프로젝트(sweet-kitten-6eef5d) → Project configuration → Build & deploy
-2. Link repository → GitHub → 저장소 선택 → 배포할 브랜치 선택
-3. 빌드 설정은 `netlify.toml`에 있으니 그대로 둡니다 (publish: `public`, functions: `netlify/functions`)
+1. dash.cloudflare.com 무료 가입
+2. Workers & Pages → Create → Pages → Connect to Git → GitHub 연결 → 저장소 선택
+3. 빌드 설정
+   - Production branch: 배포할 브랜치
+   - Framework preset: None
+   - Build command: 비워 두기
+   - Build output directory: `public`
+4. Save and Deploy → 주소가 `https://○○○.pages.dev` 로 생겨요 (화면에 워터마크 없음)
 
-## 3. 환경 변수
+`functions/` 폴더(서버 코드)는 Cloudflare가 자동으로 찾아서 `/api/*` 로 연결해요.
 
-Project configuration → Environment variables 에 추가합니다.
+## 3. 메시지 저장소(D1) 연결
+
+1. Storage & Databases → D1 → Create → 이름 `wishtree`
+2. Pages 프로젝트 → Settings → Bindings → Add → D1 database
+   - Variable name: `DB`
+   - D1 database: `wishtree`
+
+표(테이블)는 첫 접속 때 자동으로 만들어져요. 따로 SQL을 실행할 필요 없어요.
+
+## 4. 환경 변수
+
+Pages 프로젝트 → Settings → Variables and Secrets 에 추가 (비밀값은 Type을 Secret으로).
 
 | 이름 | 값 |
 |---|---|
-| `TOKEN_SECRET` | 길고 아무도 모르는 문자열 (예: 비밀번호 생성기로 40자) |
-| `ADMIN_PASSWORD` | 운영진 비밀번호 |
-| `PUBLIC_URL` | `https://sweet-kitten-6eef5d.netlify.app` |
-| `SLACK_SIGNING_SECRET` | 4단계에서 받는 값 |
-| `SLACK_BOT_TOKEN` | 4단계에서 받는 `xoxb-…` 값 (선택: 이름 조회, 선물 도착 DM) |
+| `TOKEN_SECRET` (Secret) | 길고 아무도 모르는 문자열 (비밀번호 생성기로 40자 정도) |
+| `ADMIN_PASSWORD` (Secret) | 운영진 비밀번호 |
+| `PUBLIC_URL` | 2단계에서 생긴 주소 (예: `https://wishtree.pages.dev`) |
+| `SLACK_SIGNING_SECRET` (Secret) | 5단계에서 받는 값 |
+| `SLACK_BOT_TOKEN` (Secret) | 5단계에서 받는 `xoxb-…` 값 |
 
-환경 변수를 바꾼 뒤에는 Deploys → Trigger deploy 로 한 번 다시 배포합니다.
+바꾼 뒤에는 Deployments → 최신 배포 → Retry deployment 로 한 번 다시 배포합니다.
 
-## 4. 슬랙 앱 만들기
+## 5. 슬랙 앱 만들기
 
-1. api.slack.com/apps → Create New App → From an app manifest → 회사 워크스페이스 선택
-2. 아래 내용을 붙여 넣고 만들기
-3. Basic Information → Signing Secret 값을 `SLACK_SIGNING_SECRET` 에
-4. Install App → 워크스페이스에 설치 (관리자 승인이 필요할 수 있음) → Bot User OAuth Token(`xoxb-…`)을 `SLACK_BOT_TOKEN` 에
+1. api.slack.com/apps → Create New App → From an app manifest → 회사 워크스페이스
+2. 아래 내용을 붙여 넣기 (url의 주소를 내 Pages 주소로 바꿔서)
+3. Basic Information → Signing Secret → `SLACK_SIGNING_SECRET`
+4. Install App → 설치 (워크스페이스 관리자 승인이 필요할 수 있어요) → Bot User OAuth Token → `SLACK_BOT_TOKEN`
 
 ```yaml
 display_information:
@@ -45,9 +61,10 @@ features:
     display_name: 소원트리 산타
   slash_commands:
     - command: /santa
-      url: https://sweet-kitten-6eef5d.netlify.app/api/slack/command
-      description: 내 오두막 입장 링크 받기
-      should_escape: false
+      url: https://○○○.pages.dev/api/slack/command
+      description: 내 오두막 입장 링크 받기 (/santa @동료 → 동료 오두막으로)
+      usage_hint: "[@동료]"
+      should_escape: true
 oauth_config:
   scopes:
     bot:
@@ -56,18 +73,32 @@ oauth_config:
       - users:read
 ```
 
-커맨드 이름은 `/santa` 로 적어 두었어요. 한글 `/산타` 가 등록되는지는 확인하지 못했으니, 원하시면 manifest에서 바꿔 보고 오류가 나면 `/santa` 를 쓰세요.
+한글 `/산타` 가 커맨드 이름으로 등록되는지는 확인하지 못했어요. 등록이 안 되면 `/santa` 를 쓰세요.
 
-## 5. 확인
+## 6. 100명 오두막 만들기
 
-1. 슬랙에서 `/santa` 입력 → 본인에게만 보이는 입장 링크가 옵니다.
-2. 링크를 열면 내 오두막. 🏘️ 버튼으로 마을 목록을 열어 동료 방에 놀러 갈 수 있어요.
-3. 슬랙 없이 테스트하려면: ⚙️ 관리 → 운영진 비밀번호로 로그인 → "테스트 입장 링크"에서 이름으로 링크를 만들 수 있어요.
+1. 사이트에 운영진 입장 링크로 들어가기 (처음엔 슬랙에서 `/santa`)
+2. ⚙️ 관리 → 운영진 비밀번호 로그인 → "🏘️ 슬랙 멤버로 오두막 만들기"
+3. 회사 슬랙 멤버 전원(봇·게스트·퇴사자 제외)의 오두막이 생겨요. 새 입사자가 생기면 다시 누르면 됩니다.
 
-## 동작 방식 요약
+## 사용 방법 (참여자)
 
-- 입장: 슬랙 `/santa` 가 서명된 개인 링크를 줍니다. 링크가 없으면 들어올 수 없어요.
-- 방: 슬랙 사용자마다 오두막 하나. 마을 목록에서 모두의 방을 볼 수 있어요.
-- 메시지: 방에 들어온 누구나 트리 앞에서 바로 읽을 수 있어요. 작성자 이름은 슬랙 이름으로 고정되고, 익명도 가능해요 (운영진은 실제 작성자를 볼 수 있음).
-- 알림: 내 방에 선물이 놓이면 슬랙 DM이 옵니다 (`SLACK_BOT_TOKEN` 이 있을 때).
-- 저장: Netlify Blobs (메시지마다 따로 저장해 동시에 써도 덮어쓰지 않음). 1인당 1분에 6개까지.
+| 슬랙에서 | 결과 |
+|---|---|
+| `/santa` | 내 오두막 입장 링크 (나에게만 보임) |
+| `/santa @홍길동` | 홍길동님 오두막으로 가는 링크 (내 이름으로 입장) |
+
+- 사이트 안에서는 🏘️ 마을 버튼이나 현관문으로 동료 오두막을 찾아갈 수 있어요.
+- 내 트리에 선물이 놓이면 슬랙 DM이 와요. 받은 카드의 "답례하러 가기" 버튼으로 보낸 사람 오두막에 바로 갈 수 있어요.
+- 작성자 이름은 슬랙 이름으로 고정, 익명도 가능 (운영진은 실제 작성자 확인 가능). 1인당 1분에 6개까지.
+
+## 무료 한도 (100명 기준 예상)
+
+아래는 제가 알고 있는 Cloudflare 무료 플랜 기준이에요. 가입할 때 최신 한도를 한 번 확인해 주세요.
+
+| 항목 | 무료 한도 | 100명 예상 사용량 |
+|---|---|---|
+| 사이트 트래픽 | 무제한 | 3D 모델 약 6MB × 접속 수 |
+| 서버 요청 (Functions) | 하루 10만 번 | 접속 중 10초마다 새로고침 → 하루 수천~수만 번 |
+| D1 읽기 | 하루 500만 행 | 충분 |
+| D1 쓰기 | 하루 10만 행 | 메시지 수천 건 이내 |

@@ -37,6 +37,8 @@ function openItem(id) {
   closeModal('card-modal');
   showCard(item, {
     owner: owner(), sealUntil: state.settings.sealUntil,
+    // 보낸 사람의 오두막으로 답례하러 가기 (익명이 아니고, 내가 보낸 게 아닐 때)
+    onReply: item.authorRoom && myRoom && item.authorRoom !== myRoom ? () => goRoom(item.authorRoom) : null,
     onPrev: () => openItem(list[(idx - 1 + list.length) % list.length].id),
     onNext: () => openItem(list[(idx + 1) % list.length].id),
   });
@@ -91,7 +93,7 @@ async function openVillage() {
   openModal('village-modal');
   const ul = $('#village-list'); ul.innerHTML = '<li class="muted">마을을 불러오는 중…</li>';
   try {
-    const rooms = await api.village();
+    const { rooms, total } = await api.villageFull();
     const render = () => {
       const q = $('#village-search').value.trim().toLowerCase();
       const rows = rooms.filter((r) => !q || r.name.toLowerCase().includes(q))
@@ -102,10 +104,10 @@ async function openVillage() {
         const ct = document.createElement('span'); ct.className = 'v-count'; ct.textContent = r.count ? `🎁 ${r.count}` : '아직 선물 없음';
         li.append(nm, ct); li.addEventListener('click', () => goRoom(r.id)); return li;
       }));
-      if (!rows.length) ul.innerHTML = '<li class="muted">찾는 동료가 없어요. 아직 /산타 를 입력하지 않았을 수 있어요.</li>';
+      if (!rows.length) ul.innerHTML = '<li class="muted">찾는 동료가 없어요. 운영진이 아직 오두막을 만들지 않았을 수 있어요.</li>';
     };
     $('#village-search').oninput = render; render();
-    $('#village-count').textContent = `오두막 ${rooms.length}채`;
+    $('#village-count').textContent = `오두막 ${rooms.length}채 · 선물 ${total ?? rooms.reduce((a, r) => a + (r.count || 0), 0)}개`;
   } catch (e) { ul.innerHTML = `<li class="muted">${e.message}</li>`; }
 }
 $('#btn-village').addEventListener('click', openVillage);
@@ -115,7 +117,7 @@ $('#village-home').addEventListener('click', () => goRoom(myRoom));
 function showGate() {
   $('#entry').hidden = false; document.body.classList.add('gate');
   $('#entry-title').textContent = '우리의 소원트리';
-  $('#entry .sub').textContent = '슬랙에서 /산타 를 입력하면 내 오두막 입장 링크가 도착해요 🎄';
+  $('#entry .sub').textContent = '슬랙에서 /santa 를 입력하면 내 오두막 입장 링크가 도착해요 🎄';
   ['#entry-name', '#enter-btn', '#entry .field-label', '#entry .small'].forEach((q) => { const e = $(q); if (e) e.hidden = true; });
   setTimeout(() => { $('#loading').style.opacity = '0'; setTimeout(() => $('#loading')?.remove(), 600); }, 150);
 }

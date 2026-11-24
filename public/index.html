@@ -114,6 +114,7 @@
       <blockquote class="xcard-msg" id="card-msg"></blockquote>
       <p class="xcard-from" id="card-author"></p>
       <p class="xcard-date" id="card-date"></p>
+      <button class="btn btn-reply" id="card-reply" hidden></button>
       <div class="xcard-nav"><button class="btn btn-ghost" id="card-prev">← 이전</button><button class="btn btn-ghost" id="card-next">다음 →</button></div>
     </article>
   </div>
@@ -138,6 +139,11 @@
         <p class="muted small" id="admin-mode-note"></p>
       </form>
       <div id="admin-body" hidden>
+        <section class="admin-section" id="sync-section">
+          <h3>오두막 만들기</h3>
+          <p class="muted small">회사 슬랙 멤버 전원(봇·게스트 제외)의 오두막을 한 번에 만들어요. 새 입사자가 생기면 다시 누르면 돼요.</p>
+          <button class="btn btn-primary" id="sync-slack">🏘️ 슬랙 멤버로 오두막 만들기</button>
+        </section>
         <section class="admin-section" id="invite-section">
           <h3>테스트 입장 링크</h3>
           <p class="muted small">슬랙 연결 전이나 슬랙을 안 쓰는 분에게, 이름만으로 그 사람 오두막 입장 링크를 만들어 드려요. 링크는 본인에게만 전달하세요.</p>

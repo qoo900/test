@@ -28,6 +28,8 @@ class ServerApi {
   // 내 정보 (입장 토큰 확인 + 내 방 만들기). 토큰이 없거나 만료면 null
   async me() { try { return await this.req('me', {}, true); } catch { return null; } }
   village() { return this.req('village', {}, true).then((r) => r.rooms); }
+  villageFull() { return this.req('village', {}, true); }
+  adminSyncSlack() { return this.req('admin/sync-slack', { method: 'POST' }, true); }
   adminInvite(name) { return this.req('admin/invite', { method: 'POST', body: JSON.stringify({ name }) }, true); }
   addItem(input) { return this.req('/items', { method: 'POST', body: JSON.stringify(input) }).then((r) => r.item); }
   async adminLogin(password) {
@@ -74,6 +76,8 @@ class LocalApi {
   async getState({ admin = false } = {}) { return this.state(admin && this.isAdmin); }
   async me() { return null; }
   async village() { return []; }
+  async villageFull() { return { rooms: [], total: 0 }; }
+  async adminSyncSlack() { throw new Error('로컬 모드에서는 쓸 수 없어요.'); }
   async adminInvite() { throw new Error('로컬 모드에서는 초대 링크를 만들 수 없어요.'); }
   async addItem(input) {
     const { value, error } = validateNewItem(input);

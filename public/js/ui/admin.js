@@ -79,6 +79,13 @@ export function setupAdmin({ api, onStateChange }) {
   $('#seal-toggle').addEventListener('change', () => $('#seal-save').click());
 
   $('#invite-section').hidden = api.mode !== 'server';
+  $('#sync-section').hidden = api.mode !== 'server';
+  $('#sync-slack').addEventListener('click', async (e) => {
+    e.target.disabled = true; e.target.textContent = '만드는 중…';
+    try { const r = await api.adminSyncSlack(); toast(`🏘️ 오두막 ${r.rooms}채를 준비했어요`); }
+    catch (ex) { toast(`⚠️ ${ex.message}`); }
+    finally { e.target.disabled = false; e.target.textContent = '🏘️ 슬랙 멤버로 오두막 만들기'; }
+  });
   $('#invite-make').addEventListener('click', async () => {
     try {
       const { link } = await api.adminInvite($('#invite-name').value);
