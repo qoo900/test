@@ -49,7 +49,9 @@ const compose = setupCompose({
     applyState({ ...state, items: [...state.items, item] });
     sound.sparkle();
     setTimeout(() => view.highlight(item.id), 100);
-    setTimeout(() => { if (!anyModalOpen()) view.unfocus(); }, 3500);
+    // 새 장식을 보여준 뒤 원래 자리로 (창이 열려 있으면 닫힐 때까지 기다렸다가)
+    const release = () => { if (anyModalOpen()) setTimeout(release, 500); else view.unfocus(); };
+    setTimeout(release, 3500);
     toast('🎁 트리 아래에 선물을 놓았어요!');
   },
 });

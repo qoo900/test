@@ -2,34 +2,35 @@
 // 가구 충돌은 미리 측정한 바닥 격자(0.2m)로 처리 → 레이캐스트 없이 가볍게
 import * as THREE from 'three';
 
-// 모델에서 측정한 막힌 칸 지도: 행=z(-2.7→+2.7), 열=x(-2.7→+2.7), '#'=가구/트리/벽난로
+// 행=z(-2.7→+2.7), 열=x(-2.7→+2.7), '#'=막힘
+// 막힌 칸 지도 (모델 측정): 무릎 높이(약 0.6m) 이상 가구·트리만 막음 → 바닥의 선물 상자는 지나갈 수 있음. 낮은 커피 테이블은 예외로 막음
 const GRID = [
-  '...#####.##########.........',
-  '.######.###########.........',
+  '.......#.##########.........',
+  '..##..#..##########.........',
+  '...####.#...................',
   '.########...................',
-  '.##########.................',
-  '##########.............###..',
-  '##########......####..####..',
-  '.#########.....############.',
-  '########.......############.',
-  '###.###........######.#####.',
-  '.#####.........######..#####',
-  '###............######...#.##',
-  '.#.............######..#####',
+  '.########..............###..',
+  '....####........####..####..',
+  '...#.####......############.',
+  '...#...#.......#######...##.',
+  '...............######...###.',
   '...............######..###..',
-  '................####....####',
-  '.........................###',
-  '.........................##.',
-  '#####...................####',
-  '#####...................####',
-  '#####....................###',
-  '#####...................####',
-  '#####.....................##',
-  '#####.....................##',
+  '...............######...#...',
+  '...............######.......',
+  '...............######.......',
+  '................####........',
+  '............................',
+  '............................',
   '#####.......................',
-  '#####.......................',
-  '#####.......................',
-  '#####.......................',
+  '#####.....................#.',
+  '###.........................',
+  '##..........................',
+  '##..........................',
+  '##..........................',
+  '###.........................',
+  '###.........................',
+  '###.........................',
+  '###.........................',
   '#####.......................',
   '#####.......................',
 ];
@@ -90,21 +91,38 @@ export class Walker {
   }
   unfocus() { if (this.focus && !this.focus.back) { const f = this.focus; this.focus = { from: { pos: this.pos.clone(), yaw: this.yaw, pitch: this.pitch }, to: f.from, t: 0, back: true }; } }
 
+  // 지금 막힌 칸에 서 있으면(장식 보러 갔다가 가구 사이에 선 경우 등) 가장 가까운 빈 칸으로 빠져나옴
+  unstick() {
+    if (free(this.pos.x, this.pos.z)) return false;
+    for (let r = 0.2; r <= 3; r += 0.2) for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
+      const x = this.pos.x + Math.cos(a) * r, z = this.pos.z + Math.sin(a) * r;
+      if (free(x, z)) { this.pos.x = x; this.pos.z = z; return true; }
+    }
+    this.pos.set(1.6, this.pos.y, 2.1); return true; // 최후 수단: 처음 자리로
+  }
+
+  moveInput() {
+    let f = 0, r = 0; const K = this.keys;
+    if (K.has('w') || K.has('arrowup')) f += 1; if (K.has('s') || K.has('arrowdown')) f -= 1;
+    if (K.has('d') || K.has('arrowright')) r += 1; if (K.has('a') || K.has('arrowleft')) r -= 1;
+    if (this.joy.id !== null) { f -= this.joy.y; r += this.joy.x; }
+    return { f, r, len: Math.hypot(f, r) };
+  }
+
   update(dt) {
+    // 장식을 보고 있는 중이라도 걷기 입력이 들어오면 그 자리에서 바로 조작 가능하게 (갇힘 방지)
+    if (this.focus && this.enabled && this.moveInput().len > 0.05) { this.focus = null; this.unstick(); }
     if (this.focus) {
       const f = this.focus; f.t = Math.min(1, f.t + dt / 0.9); const k = f.t * f.t * (3 - 2 * f.t);
       this.pos.lerpVectors(f.from.pos, f.to.pos, k);
       let dy = f.to.yaw - f.from.yaw; dy = ((dy + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
       this.yaw = f.from.yaw + dy * k; this.pitch = f.from.pitch + (f.to.pitch - f.from.pitch) * k;
-      if (f.back && f.t >= 1) this.focus = null;
+      if (f.back && f.t >= 1) { this.focus = null; this.unstick(); }
     } else if (this.enabled) {
-      let f = 0, r = 0; const K = this.keys;
-      if (K.has('w') || K.has('arrowup')) f += 1; if (K.has('s') || K.has('arrowdown')) f -= 1;
-      if (K.has('d') || K.has('arrowright')) r += 1; if (K.has('a') || K.has('arrowleft')) r -= 1;
-      if (this.joy.id !== null) { f -= this.joy.y; r += this.joy.x; }
-      const len = Math.hypot(f, r);
+      let { f, r, len } = this.moveInput(); const K = this.keys;
       if (len > 0.05) {
         if (len > 1) { f /= len; r /= len; }
+        this.unstick();
         const sp = (K.has('shift') ? 2.4 : 1.5) * dt; const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw);
         const mx = (-sy * f + cy * r) * sp, mz = (-cy * f - sy * r) * sp;
         if (free(this.pos.x + mx, this.pos.z)) this.pos.x += mx; // 축별로 따로 → 벽을 따라 미끄러지듯
