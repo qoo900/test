@@ -45,35 +45,25 @@ Pages 프로젝트 → Settings → Variables and Secrets 에 추가 (비밀값�
 
 바꾼 뒤에는 Deployments → 최신 배포 → Retry deployment 로 한 번 다시 배포합니다.
 
-## 5. 슬랙 앱 만들기
+## 5. 슬랙: 기존 TM봇에 /santa 추가
 
-1. api.slack.com/apps → Create New App → From an app manifest → 회사 워크스페이스
-2. 아래 내용을 붙여 넣기 (url의 주소를 내 Pages 주소로 바꿔서)
-3. Basic Information → Signing Secret → `SLACK_SIGNING_SECRET`
-4. Install App → 설치 (워크스페이스 관리자 승인이 필요할 수 있어요) → Bot User OAuth Token → `SLACK_BOT_TOKEN`
+회사 서버에서 이미 돌아가는 TM봇을 그대로 씁니다 (이름 변경 없음). 선물 알림 DM도 TM봇 이름으로 가요.
 
-```yaml
-display_information:
-  name: 소원트리 산타
-  description: 동료의 오두막 트리 아래에 연말 롤링페이퍼 선물을 놓아요
-features:
-  bot_user:
-    display_name: 소원트리 산타
-  slash_commands:
-    - command: /santa
-      url: https://○○○.pages.dev/api/slack/command
-      description: 내 오두막 입장 링크 받기 (/santa @동료 → 동료 오두막으로)
-      usage_hint: "[@동료]"
-      should_escape: true
-oauth_config:
-  scopes:
-    bot:
-      - commands
-      - chat:write
-      - users:read
-```
+1. api.slack.com/apps → TM봇 → **Socket Mode가 꺼져 있는지 확인**
+   - 켜져 있으면 모든 커맨드가 회사 서버로만 가서 `/santa` 를 Cloudflare로 보낼 수 없어요. 이 경우 별도 앱이 필요해요.
+2. Slash Commands → Create New Command
+   - Command: `/santa`
+   - Request URL: `https://○○○.pages.dev/api/slack/command`
+   - Short Description: `내 오두막 입장 링크 받기`
+   - Usage Hint: `[@동료]`
+   - "Escape channels, users, and links sent to your app" 체크
+3. 권한(`commands`, `chat:write`, `users:read`)은 TM봇에 이미 있어서 추가·재설치가 필요 없어요.
+4. Cloudflare 환경 변수
+   - Basic Information → Signing Secret → `SLACK_SIGNING_SECRET`
+   - OAuth & Permissions → Bot User OAuth Token(`xoxb-…`) → `SLACK_BOT_TOKEN`
+   - User OAuth Token(`xoxp-…`)은 쓰지 않아요.
 
-한글 `/산타` 가 커맨드 이름으로 등록되는지는 확인하지 못했어요. 등록이 안 되면 `/santa` 를 쓰세요.
+주의: TM봇 토큰을 재발급(취소·재설치)하면 회사 서버의 TM봇 설정도 같이 바꿔야 해요. TM봇 서버 담당자와 일정을 맞춰서 하세요.
 
 ## 6. 100명 오두막 만들기
 
