@@ -43,7 +43,7 @@ class LocalApi {
   constructor(room) {
     this.mode = 'local';
     this.room = room;
-    this.key = `wishtree:v2:${room}`;
+    this.key = `wishtree:v3:${room}`; // 샘플 구성이 바뀌면 버전을 올려 새로 보이게
     this.isAdmin = false;
     this.data = this.load();
   }

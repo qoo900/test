@@ -29,4 +29,14 @@ export const DEMO_ITEMS = [
   { type: 'gift',      author: '노태민', message: '마니또 선물은 비밀이에요 🤫🎁', createdAt: t(23) },
 ];
 
-export const SAMPLE_ITEMS = [];
+// 미리보기용 샘플 롤링페이퍼 8개 (이름은 모두 가상의 예시)
+export const SAMPLE_ITEMS = [
+  { type: 'letter',    author: '박서준', message: '하늘님, 올 한 해 옆자리에서 든든했어요. 내년에도 잘 부탁해요! 🎄', createdAt: t(1) },
+  { type: 'red_ball',  author: '이도윤', message: '매일 아침 커피 챙겨줘서 고마워요 ☕', createdAt: t(2) },
+  { type: 'star',      author: '한지우', message: '신입 때 하나하나 알려주신 거 잊지 않을게요. 당신은 우리 팀의 별 ⭐', createdAt: t(3) },
+  { type: 'letter',    author: '', anonymous: true, message: '힘들 때 먼저 말 걸어줘서 정말 고마웠어요. Merry Christmas!', createdAt: t(4) },
+  { type: 'gold_ball', author: '정민지', message: '프로젝트 오픈 고생 많았어요! 따뜻한 연말 보내세요 ✨', createdAt: t(5) },
+  { type: 'candy',     author: '최우진', message: '간식 서랍 공유해줘서 감사합니다 🍬 내년에도 달달하게!', createdAt: t(6) },
+  { type: 'bell',      author: '윤아름', message: '회의 때마다 분위기 띄워줘서 고마워요. 징글벨~ 🔔', createdAt: t(7) },
+  { type: 'gift',      author: '오세훈', message: '송년회 때 직접 선물 드릴게요. 올해도 수고 많으셨어요 🎁', createdAt: t(8) },
+];
