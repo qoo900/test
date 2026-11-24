@@ -1,5 +1,5 @@
 // DOM UI: 입장, HUD, 작성 모달, 크리스마스 카드, 모아보기, 토스트, 모달 공통
-import { ITEM_TYPES, LIMITS } from '../data/catalog.js';
+import { ITEM_TYPES, LIMITS, DEFAULT_SETTINGS } from '../data/catalog.js';
 import { authorName, formatDate } from '../util.js';
 
 export const $ = (s, root = document) => root.querySelector(s);
@@ -62,6 +62,13 @@ export function setupEntry({ owner, defaultName, onEnter, locked = false, mine =
 export function setHud({ title, owner, count, sealed, sealUntil, mode }) {
   if (title) { $('#hud-title').textContent = title; document.title = title; }
   if (owner !== undefined) $('#hud-meta').textContent = `${owner}님의 트리 · 🎁 선물 ${count}개${mode === 'local' ? ' · 로컬 모드' : ''}`;
+  // 마감 안내: D-day 또는 마감됨
+  const dl = $('#hud-deadline');
+  if (dl) {
+    const close = Date.parse(DEFAULT_SETTINGS.closeAt); const left = close - Date.now();
+    if (left <= 0) dl.textContent = '🔔 선물 놓기가 마감됐어요 · 받은 메시지는 계속 읽을 수 있어요';
+    else { const d = Math.ceil(left / 86400000); dl.textContent = d <= 1 ? '⏰ 오늘 23:59 선물 놓기 마감!' : `🎁 선물 놓기 마감 D-${d} (12/24 23:59)`; }
+  }
   const s = $('#hud-seal');
   if (sealed !== undefined) { s.hidden = !sealed; if (sealed) s.textContent = `🔒 ${formatDate(sealUntil)}에 열려요`; }
 }

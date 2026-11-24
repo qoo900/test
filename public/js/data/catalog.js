@@ -26,6 +26,13 @@ export const DEFAULT_SETTINGS = {
   owner: '하늘',                 // 이 집(트리)의 주인
   sealEnabled: false,
   sealUntil: '2026-12-25T00:00:00+09:00', // 봉인 해제: 크리스마스
+  closeAt: '2026-12-24T23:59:59+09:00',   // 선물 놓기 마감 (이후에는 읽기만 가능)
+};
+
+// 선물 놓기 마감 여부 (서버·화면 공용)
+export const isClosed = (settings = DEFAULT_SETTINGS, now = Date.now()) => {
+  const t = Date.parse(settings.closeAt || DEFAULT_SETTINGS.closeAt);
+  return Number.isFinite(t) && now > t;
 };
 
 export function sanitizeText(s, max) {

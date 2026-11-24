@@ -2,7 +2,7 @@
 //  - public/assets/tree.jpg 가 있으면 사진 배경 모드 (가볍고 예쁨)
 //  - 없으면 코드로 그린 3D 거실 모드
 import { CONFIG } from './config.js';
-import { ITEM_TYPES } from './data/catalog.js';
+import { ITEM_TYPES, isClosed } from './data/catalog.js';
 import { createApi } from './net/api.js';
 import { sound } from './audio/sound.js';
 import { buildPhotoScene, photoAvailable } from './photo/photoScene.js';
@@ -64,12 +64,13 @@ const list = setupList({ getItems: visibleItems, onPick: (it) => { closeModal('l
 function syncNearUi() {
   const room = document.body.classList.contains('room-mode');
   const on = entered && (nearTree || !room);
-  $('#btn-compose').hidden = !on;
+  $('#btn-compose').hidden = !on || isClosed(); // 마감 후에는 선물 놓기 버튼 숨김
   $('#btn-read').hidden = !(entered && nearTree);
   $('#near-hint').hidden = !(entered && room && !nearTree && !nearDoor);
+  $('#near-hint').textContent = isClosed() ? '🎄 트리 가까이 가면 받은 메시지를 읽을 수 있어요' : '🎄 트리 가까이 가면 선물을 놓고 메시지를 읽을 수 있어요';
   $('#btn-exit').hidden = !(entered && room && nearDoor);
 }
-$('#btn-compose').addEventListener('click', () => compose.open());
+$('#btn-compose').addEventListener('click', () => { if (isClosed()) { toast('선물 놓기는 12월 24일 23:59에 마감됐어요 🎄'); syncNearUi(); return; } compose.open(); });
 // 현관문: 나가기 확인 → 나간 뒤 화면 → 다시 들어가기
 $('#btn-exit').addEventListener('click', () => { $('#exit-title').textContent = isMine() ? '내 오두막에서 나가 마을로 갈까요?' : `${owner()}님의 방에서 나가시겠습니까?`; openModal('exit-modal'); });
 $('#exit-confirm').addEventListener('click', () => {

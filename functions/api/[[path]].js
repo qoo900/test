@@ -7,7 +7,7 @@
 //   PUBLIC_URL            사이트 주소 (예: https://wishtree.pages.dev)
 //   SLACK_SIGNING_SECRET  슬랙 앱 Signing Secret (/santa 커맨드 검증)
 //   SLACK_BOT_TOKEN       슬랙 봇 토큰 xoxb-… (멤버 목록으로 방 만들기, 이름 조회, 선물 도착 DM)
-import { validateNewItem, sanitizeRoom, sanitizeText, ITEM_STATUS, ITEM_TYPES, DEFAULT_SETTINGS } from '../../public/js/data/catalog.js';
+import { validateNewItem, sanitizeRoom, sanitizeText, ITEM_STATUS, ITEM_TYPES, DEFAULT_SETTINGS, isClosed } from '../../public/js/data/catalog.js';
 
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
 const enc = new TextEncoder();
@@ -110,7 +110,7 @@ export async function onRequest({ request: req, env }) {
       }
       const link = await personalLink(env, f.user_id, myName);
       return json(200, { response_type: 'ephemeral', text: `🎄 ${myName}님의 오두막 입장 링크예요: ${link}`,
-        blocks: [{ type: 'section', text: { type: 'mrkdwn', text: `*${myName}님의 오두막이 준비됐어요 🎄*\n벽난로 옆 트리 아래에 동료들의 선물이 쌓여요. 🏘️ 마을에서 동료의 오두막도 찾아가 보세요.\n_이 링크는 본인 전용이에요. 다른 사람에게 공유하지 마세요._\n동료 방으로 바로 가려면 \`/santa @동료이름\`` } },
+        blocks: [{ type: 'section', text: { type: 'mrkdwn', text: `*${myName}님의 오두막이 준비됐어요 🎄*\n벽난로 옆 트리 아래에 동료들의 선물이 쌓여요. 🏘️ 마을에서 동료의 오두막도 찾아가 보세요.\n_이 링크는 본인 전용이에요. 다른 사람에게 공유하지 마세요._\n동료 방으로 바로 가려면 \`/santa @동료이름\`\n🎁 선물 놓기는 *12월 24일 23:59*까지예요.` } },
           { type: 'actions', elements: [{ type: 'button', text: { type: 'plain_text', text: '🏠 내 오두막 들어가기' }, url: link, style: 'primary' }] }] });
     }
 
@@ -177,6 +177,7 @@ export async function onRequest({ request: req, env }) {
 
     if (action === 'items' && req.method === 'POST') {
       if (!me) return json(401, { error: 'login required' });
+      if (isClosed()) return json(403, { error: '선물 놓기는 12월 24일 23:59에 마감됐어요. 받은 메시지는 계속 읽을 수 있어요 🎄' });
       const since = new Date(Date.now() - 60_000).toISOString();
       const { n } = await db.prepare('SELECT COUNT(*) AS n FROM items WHERE author_id = ?1 AND created_at > ?2').bind(me.uid, since).first();
       if (n >= 6) return json(429, { error: '잠시 후 다시 시도해 주세요. (1분에 6개까지)' });
